@@ -216,115 +216,115 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# List of negative phrases to check for unclear or insufficient answers
-negative_phrases = [
-    "I'm sorry",
-    "عذرًا",
-    "لا أملك معلومات كافية",
-    "I don't have enough information",
-    "لم أتمكن من فهم سؤالك",
-    "I couldn't understand your question",
-    "لا يمكنني الإجابة على هذا السؤال",
-    "I cannot answer this question",
-    "يرجى تقديم المزيد من التفاصيل",
-    "Please provide more details",
-    "غير واضح",
-    "Unclear",
-    "غير متأكد",
-    "Not sure",
-    "لا أعرف",
-    "I don't know",
-    "غير متاح",
-    "Not available",
-    "غير موجود",
-    "Not found",
-    "غير معروف",
-    "Unknown",
-    "غير محدد",
-    "Unspecified",
-    "غير مؤكد",
-    "Uncertain",
-    "غير كافي",
-    "Insufficient",
-    "غير دقيق",
-    "Inaccurate",
-    "غير مفهوم",
-    "Not clear",
-    "غير مكتمل",
-    "Incomplete",
-    "غير صحيح",
-    "Incorrect",
-    "غير مناسب",
-    "Inappropriate",
-    "Please provide me",  # إضافة هذه العبارة
-    "يرجى تزويدي",  # إضافة هذه العبارة
-    "Can you provide more",  # إضافة هذه العبارة
-    "هل يمكنك تقديم المزيد"  # إضافة هذه العبارة
-]
-
-# If text input is detected, process it
-if human_input:
-    st.session_state.messages.append({"role": "user", "content": human_input})
-    with st.chat_message("user"):
-        st.markdown(human_input)
-
-    if "vectors" in st.session_state and st.session_state.vectors is not None:
-        # Create and configure the document chain and retriever
-        document_chain = create_stuff_documents_chain(llm, prompt)
-        retriever = st.session_state.vectors.as_retriever()
-        retrieval_chain = create_retrieval_chain(retriever, document_chain)
-
-        # Get response from the assistant
-        response = retrieval_chain.invoke({
-            "input": human_input,
-            "context": retriever.get_relevant_documents(human_input),
-            "history": st.session_state.memory.chat_memory.messages  # Include chat history
-        })
-        assistant_response = response["answer"]
-
-        # Append and display assistant's response
-        st.session_state.messages.append(
-            {"role": "assistant", "content": assistant_response}
-        )
-        with st.chat_message("assistant"):
-            st.markdown(assistant_response)
-
-        # Add user and assistant messages to memory
-        st.session_state.memory.chat_memory.add_user_message(human_input)
-        st.session_state.memory.chat_memory.add_ai_message(assistant_response)
-
-        # Check if the response contains any negative phrases
-        if not any(phrase in assistant_response for phrase in negative_phrases):
-            with st.expander("مراجع الصفحات" if interface_language == "العربية" else "Page References"):
-                if "context" in response:
-                    # Extract unique page numbers from the context
-                    page_numbers = set()
-                    for doc in response["context"]:
-                        page_number = doc.metadata.get("page", "unknown")
-                        if page_number != "unknown" and str(page_number).isdigit():  # Check if page_number is a valid number
-                            page_numbers.add(int(page_number))  # Convert to integer for sorting
-
-                    # Display the page numbers
-                    if page_numbers:
-                        page_numbers_str = ", ".join(map(str, sorted(page_numbers)))  # Sort pages numerically and convert back to strings
-                        st.write(f"هذه الإجابة وفقًا للصفحات: {page_numbers_str}" if interface_language == "العربية" else f"This answer is according to pages: {page_numbers_str}")
-
-                        # Capture and display screenshots of the relevant pages
-                        highlighted_pages = [(page_number, "") for page_number in page_numbers]
-                        screenshots = pdf_searcher.capture_screenshots(pdf_path, highlighted_pages)
-                        for screenshot in screenshots:
-                            st.image(screenshot)
+    # List of negative phrases to check for unclear or insufficient answers
+    negative_phrases = [
+        "I'm sorry",
+        "عذرًا",
+        "لا أملك معلومات كافية",
+        "I don't have enough information",
+        "لم أتمكن من فهم سؤالك",
+        "I couldn't understand your question",
+        "لا يمكنني الإجابة على هذا السؤال",
+        "I cannot answer this question",
+        "يرجى تقديم المزيد من التفاصيل",
+        "Please provide more details",
+        "غير واضح",
+        "Unclear",
+        "غير متأكد",
+        "Not sure",
+        "لا أعرف",
+        "I don't know",
+        "غير متاح",
+        "Not available",
+        "غير موجود",
+        "Not found",
+        "غير معروف",
+        "Unknown",
+        "غير محدد",
+        "Unspecified",
+        "غير مؤكد",
+        "Uncertain",
+        "غير كافي",
+        "Insufficient",
+        "غير دقيق",
+        "Inaccurate",
+        "غير مفهوم",
+        "Not clear",
+        "غير مكتمل",
+        "Incomplete",
+        "غير صحيح",
+        "Incorrect",
+        "غير مناسب",
+        "Inappropriate",
+        "Please provide me",  # إضافة هذه العبارة
+        "يرجى تزويدي",  # إضافة هذه العبارة
+        "Can you provide more",  # إضافة هذه العبارة
+        "هل يمكنك تقديم المزيد"  # إضافة هذه العبارة
+    ]
+    
+    # If text input is detected, process it
+    if human_input:
+        st.session_state.messages.append({"role": "user", "content": human_input})
+        with st.chat_message("user"):
+            st.markdown(human_input)
+    
+        if "vectors" in st.session_state and st.session_state.vectors is not None:
+            # Create and configure the document chain and retriever
+            document_chain = create_stuff_documents_chain(llm, prompt)
+            retriever = st.session_state.vectors.as_retriever()
+            retrieval_chain = create_retrieval_chain(retriever, document_chain)
+    
+            # Get response from the assistant
+            response = retrieval_chain.invoke({
+                "input": human_input,
+                "context": retriever.get_relevant_documents(human_input),
+                "history": st.session_state.memory.chat_memory.messages  # Include chat history
+            })
+            assistant_response = response["answer"]
+    
+            # Append and display assistant's response
+            st.session_state.messages.append(
+                {"role": "assistant", "content": assistant_response}
+            )
+            with st.chat_message("assistant"):
+                st.markdown(assistant_response)
+    
+            # Add user and assistant messages to memory
+            st.session_state.memory.chat_memory.add_user_message(human_input)
+            st.session_state.memory.chat_memory.add_ai_message(assistant_response)
+    
+            # Check if the response contains any negative phrases
+            if not any(phrase in assistant_response for phrase in negative_phrases):
+                with st.expander("مراجع الصفحات" if interface_language == "العربية" else "Page References"):
+                    if "context" in response:
+                        # Extract unique page numbers from the context
+                        page_numbers = set()
+                        for doc in response["context"]:
+                            page_number = doc.metadata.get("page", "unknown")
+                            if page_number != "unknown" and str(page_number).isdigit():  # Check if page_number is a valid number
+                                page_numbers.add(int(page_number))  # Convert to integer for sorting
+    
+                        # Display the page numbers
+                        if page_numbers:
+                            page_numbers_str = ", ".join(map(str, sorted(page_numbers)))  # Sort pages numerically and convert back to strings
+                            st.write(f"هذه الإجابة وفقًا للصفحات: {page_numbers_str}" if interface_language == "العربية" else f"This answer is according to pages: {page_numbers_str}")
+    
+                            # Capture and display screenshots of the relevant pages
+                            highlighted_pages = [(page_number, "") for page_number in page_numbers]
+                            screenshots = pdf_searcher.capture_screenshots(pdf_path, highlighted_pages)
+                            for screenshot in screenshots:
+                                st.image(screenshot)
+                        else:
+                            st.write("لا توجد أرقام صفحات صالحة في السياق." if interface_language == "العربية" else "No valid page numbers available in the context.")
                     else:
-                        st.write("لا توجد أرقام صفحات صالحة في السياق." if interface_language == "العربية" else "No valid page numbers available in the context.")
-                else:
-                    st.write("لا يوجد سياق متاح." if interface_language == "العربية" else "No context available.")
-    else:
-        # Prompt user to ensure embeddings are loaded
-        assistant_response = (
-            "لم يتم تحميل التضميدات. يرجى التحقق مما إذا كان مسار التضميدات صحيحًا." if interface_language == "العربية" else "Embeddings not loaded. Please check if the embeddings path is correct."
-        )
-        st.session_state.messages.append(
-            {"role": "assistant", "content": assistant_response}
-        )
-        with st.chat_message("assistant"):
-            st.markdown(assistant_response)
+                        st.write("لا يوجد سياق متاح." if interface_language == "العربية" else "No context available.")
+        else:
+            # Prompt user to ensure embeddings are loaded
+            assistant_response = (
+                "لم يتم تحميل التضميدات. يرجى التحقق مما إذا كان مسار التضميدات صحيحًا." if interface_language == "العربية" else "Embeddings not loaded. Please check if the embeddings path is correct."
+            )
+            st.session_state.messages.append(
+                {"role": "assistant", "content": assistant_response}
+            )
+            with st.chat_message("assistant"):
+                st.markdown(assistant_response)
