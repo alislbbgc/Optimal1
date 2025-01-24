@@ -93,14 +93,14 @@ if human_input := st.chat_input("Ask something about the document"):
 
         # Display supporting information from documents
         with st.expander("Supporting Information"):
-            for i, doc in enumerate(response["context"]):
-                st.write(doc.page_content)
-                st.write("--------------------------------")
-    else:
-        # Error message if vectors aren't loaded
-        assistant_response = (
-            "Error: Unable to load embeddings. Please check the embeddings folder and ensure the files are correct."
-        )
+                if "context" in response:
+                    for i, doc in enumerate(response["context"]):
+                        page_number = doc.metadata.get("page", "unknown")
+                        st.write(f"According to Page: {page_number}")
+                        st.write(doc.page_content)
+                        st.write("--------------------------------")
+                else:
+                    st.write("No context available.")
         st.session_state.messages.append(
             {"role": "assistant", "content": assistant_response}
         )
