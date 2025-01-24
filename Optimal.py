@@ -56,7 +56,6 @@ with st.sidebar:
                         embeddings,
                         allow_dangerous_deserialization=True  # Only use if you trust the source of the embeddings
                     )
-                    st.sidebar.write("Embeddings loaded successfully 🎉")
                 except Exception as e:
                     st.error(f"Error loading embeddings: {str(e)}")
                     st.session_state.vectors = None
