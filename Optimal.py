@@ -44,7 +44,7 @@ def apply_css_direction(direction):
 # Sidebar configuration
 with st.sidebar:
     # Language selection dropdown
-    interface_language = st.selectbox("لغة الواجهة", ["English", "العربية"])
+    interface_language = st.selectbox("Interface Language", ["English", "العربية"])
 
     # Apply CSS direction based on selected language
     if interface_language == "العربية":
