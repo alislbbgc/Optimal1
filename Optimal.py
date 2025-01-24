@@ -137,7 +137,7 @@ col1, col2 = st.columns([1, 4])  # Adjust the ratio as needed
 
 # Display the logo in the first column
 with col1:
-    st.image("BGC Logo Colored.png", width=100)  # Adjust the width as needed
+    st.image("BGC Logo Colored.svg", width=100)  # Adjust the width as needed
 
 # Display the title and description in the second column
 with col2:
