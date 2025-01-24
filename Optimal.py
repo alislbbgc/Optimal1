@@ -380,7 +380,7 @@ if human_input:
                     # Display the page numbers
                     if page_numbers:
                         page_numbers_str = ", ".join(map(str, sorted(page_numbers)))  # Sort pages numerically and convert back to strings
-                        st.write(f"هذه الإجابة وفقًا للصفحات: {page_numbers_str}" if interface_language == "العربية" else f"This answer is according to pages: {page_numbers_str}")
+                        st.write(f"هذه الإجابة وفقًا للصفحات: {page_numbers_str}" if interface_language == "العربية" else f"This Answer is According to Pages: {page_numbers_str}")
 
                         # Capture and display screenshots of the relevant pages
                         highlighted_pages = [(page_number, "") for page_number in page_numbers]
