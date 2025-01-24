@@ -86,7 +86,7 @@ st.markdown(
 
 # Microphone button above the input field
 voice_input = speech_to_text(
-    start_prompt="🎤 Click to speak",
+    start_prompt="🎤",
     stop_prompt="⏹️ Stop",
     language="en",  # Language (en for English)
     use_container_width=True,
