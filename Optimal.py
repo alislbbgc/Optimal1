@@ -20,12 +20,39 @@ st.set_page_config(
     layout="wide"  # Page layout
 )
 
+# Function to apply CSS based on language direction
+def apply_css_direction(direction):
+    st.markdown(
+        f"""
+        <style>
+            .stApp {{
+                direction: {direction};
+                text-align: {direction};
+            }}
+            .stChatInput {{
+                direction: {direction};
+            }}
+            .stChatMessage {{
+                direction: {direction};
+                text-align: {direction};
+            }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
 # Sidebar configuration
 with st.sidebar:
     st.title("Settings")
 
     # Language selection dropdown
     interface_language = st.selectbox("Interface Language", ["English", "Arabic"])
+
+    # Apply CSS direction based on selected language
+    if interface_language == "Arabic":
+        apply_css_direction("rtl")  # Right-to-left for Arabic
+    else:
+        apply_css_direction("ltr")  # Left-to-right for English
 
     # Validate API key inputs and initialize components if valid
     if groq_api_key and google_api_key:
@@ -45,7 +72,7 @@ with st.sidebar:
 
         # Load existing embeddings from files
         if "vectors" not in st.session_state:
-            with st.spinner("Loading embeddings... Please wait."):
+            with st.spinner("Loading embeddings... Please wait." if interface_language == "English" else "جارٍ تحميل التضميدات... الرجاء الانتظار."):
                 # Initialize embeddings
                 embeddings = GoogleGenerativeAIEmbeddings(
                     model="models/embedding-001"
@@ -60,22 +87,22 @@ with st.sidebar:
                         allow_dangerous_deserialization=True  # Only use if you trust the source of the embeddings
                     )
                 except Exception as e:
-                    st.error(f"Error loading embeddings: {str(e)}")
+                    st.error(f"Error loading embeddings: {str(e)}" if interface_language == "English" else f"حدث خطأ أثناء تحميل التضميدات: {str(e)}")
                     st.session_state.vectors = None
 
         # Microphone button in the sidebar
-        st.markdown("### Voice Input")
+        st.markdown("### Voice Input" if interface_language == "English" else "### الإدخال الصوتي")
         input_lang_code = "ar" if interface_language == "Arabic" else "en"  # Set language code based on interface language
         voice_input = speech_to_text(
             start_prompt="🎤",
-            stop_prompt="⏹️ Stop",
+            stop_prompt="⏹️ Stop" if interface_language == "English" else "⏹️ إيقاف",
             language=input_lang_code,  # Language (en for English, ar for Arabic)
             use_container_width=True,
             just_once=True,
             key="mic_button",
         )
     else:
-        st.error("Please enter both API keys to proceed.")
+        st.error("Please enter both API keys to proceed." if interface_language == "English" else "الرجاء إدخال مفاتيح API للمتابعة.")
 
 # Main area for chat interface
 # Use columns to display logo and title side by side
