@@ -6,149 +6,139 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain.chains import create_retrieval_chain
 from langchain_community.vectorstores import FAISS
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from streamlit_mic_recorder import speech_to_text  # استيراد وظيفة تحويل الصوت إلى نص
+from streamlit_mic_recorder import speech_to_text  # Import speech-to-text function
 
-# تهيئة مفاتيح API
+# Initialize API key variables
 groq_api_key = "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"
 google_api_key = "AIzaSyDdAiOdIa2I28sphYw36Genb4D--2IN1tU"
 
-# تهيئة الشريط الجانبي
+# Sidebar configuration
 with st.sidebar:
-    # التحقق من مفاتيح API وتهيئة المكونات إذا كانت صالحة
+    # Validate API key inputs and initialize components if valid
     if groq_api_key and google_api_key:
-        # تعيين مفتاح Google API كمتغير بيئي
+        # Set Google API key as environment variable
         os.environ["GOOGLE_API_KEY"] = google_api_key
 
-        # تهيئة ChatGroq بمفتاح API المقدم
+        # Initialize ChatGroq with the provided Groq API key
         llm = ChatGroq(groq_api_key=groq_api_key, model_name="gemma2-9b-it")
 
-        # تعريف قالب المحادثة
+        # Define the chat prompt template
         prompt = ChatPromptTemplate.from_template(
             """
-            أجب على الأسئلة بناءً على السياق المقدم فقط.
-            يرجى تقديم الإجابة الأكثر دقة بناءً على السؤال.
+            Answer the questions based on the provided context only.
+            Please provide the most accurate response based on the question.
             <context>
             {context}
             <context>
-            الأسئلة: {input}
+            Questions: {input}
             """
         )
 
-        # تحميل التضميدات الموجودة من الملفات
+        # Load existing embeddings from files
         if "vectors" not in st.session_state:
-            with st.spinner("جارٍ تحميل التضميدات... الرجاء الانتظار."):
-                # تهيئة التضميدات
+            with st.spinner("Loading embeddings... Please wait."):
+                # Initialize embeddings
                 embeddings = GoogleGenerativeAIEmbeddings(
                     model="models/embedding-001"
                 )
 
-                # تحميل فهرس FAISS الموجود مع إزالة التسلسل الآمن
-                embeddings_path = "embeddings"  # المسار إلى مجلد التضميدات
+                # Load existing FAISS index with safe deserialization
+                embeddings_path = "embeddings"  # Path to your embeddings folder
                 try:
                     st.session_state.vectors = FAISS.load_local(
                         embeddings_path,
                         embeddings,
-                        allow_dangerous_deserialization=True  # استخدم فقط إذا كنت تثق في مصدر التضميدات
+                        allow_dangerous_deserialization=True  # Only use if you trust the source of the embeddings
                     )
-                    st.sidebar.write("تم تحميل التضميدات بنجاح 🎉")
+                    st.sidebar.write("Embeddings loaded successfully 🎉")
                 except Exception as e:
-                    st.error(f"خطأ في تحميل التضميدات: {str(e)}")
+                    st.error(f"Error loading embeddings: {str(e)}")
                     st.session_state.vectors = None
     else:
-        st.error("الرجاء إدخال مفتاحي API للمتابعة.")
+        st.error("Please enter both API keys to proceed.")
 
-# منطقة الواجهة الرئيسية
-st.title("الدردشة مع PDF 🗨️")
+# Main area for chat interface
+st.title("Chat with PDF 🗨️")
 
-# تهيئة حالة الجلسة للرسائل إذا لم تكن موجودة بالفعل
+# Initialize session state for chat messages if not already done
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# عرض سجل المحادثة
+# Display chat history
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# زر المايكروفون بجانب مكان كتابة السؤال
+# Custom CSS to position the microphone button above the input field
 st.markdown(
     """
     <style>
-    .stButton button {
-        background-color: transparent;
-        border: none;
-        padding: 0;
-        margin: 0;
-    }
-    .stButton button:hover {
-        background-color: transparent;
+    .microphone-button {
+        position: relative;
+        bottom: 10px;  /* Adjust this value to align the button properly */
+        left: 0;
+        z-index: 1;
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# إنشاء حاوية للإدخال وزر المايكروفون
-col1, col2 = st.columns([6, 1])
+# Microphone button above the input field
+voice_input = speech_to_text(
+    start_prompt="🎤 Click to speak",
+    stop_prompt="⏹️ Stop",
+    language="en",  # Language (en for English)
+    use_container_width=True,
+    just_once=True,
+    key="mic_button",
+)
 
-with col1:
-    # حقل إدخال النص
-    human_input = st.chat_input("اكتب سؤالك هنا...")
-
-with col2:
-    # زر المايكروفون
-    voice_input = speech_to_text(
-        start_prompt="🎤 اضغط للتحدث",
-        stop_prompt="⏹️ توقف",
-        language="ar",  # اللغة (ar للعربية، en للإنجليزية)
-        use_container_width=True,
-        just_once=True,
-    )
-
-# إذا تم اكتشاف إدخال صوتي، قم بمعالجته
+# If voice input is detected, process it
 if voice_input:
     st.session_state.messages.append({"role": "user", "content": voice_input})
     with st.chat_message("user"):
         st.markdown(voice_input)
 
     if "vectors" in st.session_state and st.session_state.vectors is not None:
-        # إنشاء وتكوين سلسلة المستندات والمسترجعات
+        # Create and configure the document chain and retriever
         document_chain = create_stuff_documents_chain(llm, prompt)
         retriever = st.session_state.vectors.as_retriever()
         retrieval_chain = create_retrieval_chain(retriever, document_chain)
 
-        # الحصول على الرد من المساعد
+        # Get response from the assistant
         response = retrieval_chain.invoke({"input": voice_input})
         assistant_response = response["answer"]
 
-        # إضافة وعرض رد المساعد
+        # Append and display assistant's response
         st.session_state.messages.append(
             {"role": "assistant", "content": assistant_response}
         )
         with st.chat_message("assistant"):
             st.markdown(assistant_response)
 
-        # عرض المعلومات الداعمة (أرقام الصفحات فقط)
-        with st.expander("المعلومات الداعمة"):
+        # Display supporting information (page numbers only)
+        with st.expander("Supporting Information"):
             if "context" in response:
-                # استخراج أرقام الصفحات الفريدة من السياق
+                # Extract unique page numbers from the context
                 page_numbers = set()
                 for doc in response["context"]:
-                    page_number = doc.metadata.get("page", "غير معروف")
-                    if page_number != "غير معروف" and str(page_number).isdigit():  # التحقق مما إذا كان رقم الصفحة صالحًا
-                        page_numbers.add(int(page_number))  # التحويل إلى عدد صحيح للفرز
+                    page_number = doc.metadata.get("page", "unknown")
+                    if page_number != "unknown" and str(page_number).isdigit():  # Check if page_number is a valid number
+                        page_numbers.add(int(page_number))  # Convert to integer for sorting
 
-                # عرض أرقام الصفحات
+                # Display the page numbers
                 if page_numbers:
-                    page_numbers_str = ", ".join(map(str, sorted(page_numbers)))  # فرز الصفحات رقميًا وتحويلها إلى نص
-                    st.write(f"هذه الإجابة مأخوذة من الصفحات: {page_numbers_str}")
+                    page_numbers_str = ", ".join(map(str, sorted(page_numbers)))  # Sort pages numerically and convert back to strings
+                    st.write(f"This answer is according to pages: {page_numbers_str}")
                 else:
-                    st.write("لا توجد أرقام صفحات صالحة في السياق.")
+                    st.write("No valid page numbers available in the context.")
             else:
-                st.write("لا يوجد سياق متاح.")
+                st.write("No context available.")
     else:
-        # تنبيه المستخدم بضرورة تحميل التضميدات
+        # Prompt user to ensure embeddings are loaded
         assistant_response = (
-            "لم يتم تحميل التضميدات. الرجاء التحقق من مسار التضميدات."
+            "Embeddings not loaded. Please check if the embeddings path is correct."
         )
         st.session_state.messages.append(
             {"role": "assistant", "content": assistant_response}
@@ -156,51 +146,54 @@ if voice_input:
         with st.chat_message("assistant"):
             st.markdown(assistant_response)
 
-# إذا تم إدخال نص، قم بمعالجته
+# Text input field
+human_input = st.chat_input("Type your question here...")
+
+# If text input is detected, process it
 if human_input:
     st.session_state.messages.append({"role": "user", "content": human_input})
     with st.chat_message("user"):
         st.markdown(human_input)
 
     if "vectors" in st.session_state and st.session_state.vectors is not None:
-        # إنشاء وتكوين سلسلة المستندات والمسترجعات
+        # Create and configure the document chain and retriever
         document_chain = create_stuff_documents_chain(llm, prompt)
         retriever = st.session_state.vectors.as_retriever()
         retrieval_chain = create_retrieval_chain(retriever, document_chain)
 
-        # الحصول على الرد من المساعد
+        # Get response from the assistant
         response = retrieval_chain.invoke({"input": human_input})
         assistant_response = response["answer"]
 
-        # إضافة وعرض رد المساعد
+        # Append and display assistant's response
         st.session_state.messages.append(
             {"role": "assistant", "content": assistant_response}
         )
         with st.chat_message("assistant"):
             st.markdown(assistant_response)
 
-        # عرض المعلومات الداعمة (أرقام الصفحات فقط)
-        with st.expander("المعلومات الداعمة"):
+        # Display supporting information (page numbers only)
+        with st.expander("Supporting Information"):
             if "context" in response:
-                # استخراج أرقام الصفحات الفريدة من السياق
+                # Extract unique page numbers from the context
                 page_numbers = set()
                 for doc in response["context"]:
-                    page_number = doc.metadata.get("page", "غير معروف")
-                    if page_number != "غير معروف" and str(page_number).isdigit():  # التحقق مما إذا كان رقم الصفحة صالحًا
-                        page_numbers.add(int(page_number))  # التحويل إلى عدد صحيح للفرز
+                    page_number = doc.metadata.get("page", "unknown")
+                    if page_number != "unknown" and str(page_number).isdigit():  # Check if page_number is a valid number
+                        page_numbers.add(int(page_number))  # Convert to integer for sorting
 
-                # عرض أرقام الصفحات
+                # Display the page numbers
                 if page_numbers:
-                    page_numbers_str = ", ".join(map(str, sorted(page_numbers)))  # فرز الصفحات رقميًا وتحويلها إلى نص
-                    st.write(f"هذه الإجابة مأخوذة من الصفحات: {page_numbers_str}")
+                    page_numbers_str = ", ".join(map(str, sorted(page_numbers)))  # Sort pages numerically and convert back to strings
+                    st.write(f"This answer is according to pages: {page_numbers_str}")
                 else:
-                    st.write("لا توجد أرقام صفحات صالحة في السياق.")
+                    st.write("No valid page numbers available in the context.")
             else:
-                st.write("لا يوجد سياق متاح.")
+                st.write("No context available.")
     else:
-        # تنبيه المستخدم بضرورة تحميل التضميدات
+        # Prompt user to ensure embeddings are loaded
         assistant_response = (
-            "لم يتم تحميل التضميدات. الرجاء التحقق من مسار التضميدات."
+            "Embeddings not loaded. Please check if the embeddings path is correct."
         )
         st.session_state.messages.append(
             {"role": "assistant", "content": assistant_response}
