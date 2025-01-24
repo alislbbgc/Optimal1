@@ -77,11 +77,11 @@ with st.sidebar:
     if interface_language == "العربية":
         apply_css_direction("rtl")
         st.title("الإعدادات")
-        current_language_folder = "Arabic"
+        current_lang_folder = "Arabic"
     else:
         apply_css_direction("ltr")
         st.title("Settings")
-        current_language_folder = "English"
+        current_lang_folder = "English"
 
     # Validate API key inputs and initialize components if valid
     if groq_api_key and google_api_key:
@@ -126,11 +126,11 @@ with st.sidebar:
             ("system", "Context: {context}"),
         ])
 
-        # Load embeddings dynamically based on selected language
-        embeddings_path = os.path.join("embeddings", current_language_folder)
+        # Modified embeddings path structure
+        embeddings_path = os.path.join("embeddings", current_lang_folder, "embeddings")
         
         # Reload embeddings if language changes or not loaded
-        if "vectors" not in st.session_state or st.session_state.get("current_language") != current_language_folder:
+        if "vectors" not in st.session_state or st.session_state.get("current_lang_folder") != current_lang_folder:
             with st.spinner("جارٍ تحميل التضميدات... الرجاء الانتظار." if interface_language == "العربية" else "Loading embeddings... Please wait."):
                 try:
                     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
@@ -139,7 +139,7 @@ with st.sidebar:
                         embeddings,
                         allow_dangerous_deserialization=True
                     )
-                    st.session_state.current_language = current_language_folder
+                    st.session_state.current_lang_folder = current_lang_folder
                 except Exception as e:
                     error_msg = f"حدث خطأ أثناء تحميل التضميدات: {str(e)}" if interface_language == "العربية" else f"Error loading embeddings: {str(e)}"
                     st.error(error_msg)
