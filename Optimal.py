@@ -63,40 +63,39 @@ with st.sidebar:
         llm = ChatGroq(groq_api_key=groq_api_key, model_name="gemma2-9b-it")
 
         # Define the chat prompt template with memory
-       # Define the chat prompt template with memory
-prompt = ChatPromptTemplate.from_messages([
-    ("system", """
-    You are a helpful assistant for Basrah Gas Company (BGC). Your task is to answer questions based on the provided context about BGC. Follow these rules strictly:
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", """
+            You are a helpful assistant for Basrah Gas Company (BGC). Your task is to answer questions based on the provided context about BGC. Follow these rules strictly:
 
-    1. **Language Handling:**
-       - If the question is in English, answer in English.
-       - If the question is in Arabic, answer in Arabic.
-       - If the user explicitly asks for a response in a specific language, respond in that language.
+            1. **Language Handling:**
+               - If the question is in English, answer in English.
+               - If the question is in Arabic, answer in Arabic.
+               - If the user explicitly asks for a response in a specific language, respond in that language.
 
-    2. **Contextual Answers:**
-       - Provide accurate and concise answers based on the context provided.
-       - Do not explicitly mention the source of information unless asked.
+            2. **Contextual Answers:**
+               - Provide accurate and concise answers based on the context provided.
+               - Do not explicitly mention the source of information unless asked.
 
-    3. **Handling Unclear or Unanswerable Questions:**
-       - If the question is unclear or lacks sufficient context, respond with:
-         - In English: "I'm sorry, I couldn't understand your question. Could you please provide more details?"
-         - In Arabic: "عذرًا، لم أتمكن من فهم سؤالك. هل يمكنك تقديم المزيد من التفاصيل؟"
-       - If the question cannot be answered based on the provided context, respond with:
-         - In English: "I'm sorry, I don't have enough information to answer that question."
-         - In Arabic: "عذرًا، لا أملك معلومات كافية للإجابة على هذا السؤال."
+            3. **Handling Unclear or Unanswerable Questions:**
+               - If the question is unclear or lacks sufficient context, respond with:
+                 - In English: "I'm sorry, I couldn't understand your question. Could you please provide more details?"
+                 - In Arabic: "عذرًا، لم أتمكن من فهم سؤالك. هل يمكنك تقديم المزيد من التفاصيل؟"
+               - If the question cannot be answered based on the provided context, respond with:
+                 - In English: "I'm sorry, I don't have enough information to answer that question."
+                 - In Arabic: "عذرًا، لا أملك معلومات كافية للإجابة على هذا السؤال."
 
-    4. **User Interface Language:**
-       - If the user has selected Arabic as the interface language, prioritize Arabic in your responses unless the question is explicitly in English.
-       - If the user has selected English as the interface language, prioritize English in your responses unless the question is explicitly in Arabic.
+            4. **User Interface Language:**
+               - If the user has selected Arabic as the interface language, prioritize Arabic in your responses unless the question is explicitly in English.
+               - If the user has selected English as the interface language, prioritize English in your responses unless the question is explicitly in Arabic.
 
-    5. **Professional Tone:**
-       - Maintain a professional and respectful tone in all responses.
-       - Avoid making assumptions or providing speculative answers.
-    """),
-    MessagesPlaceholder(variable_name="history"),  # Add chat history to the prompt
-    ("human", "{input}"),
-    ("system", "Context: {context}"),
-])
+            5. **Professional Tone:**
+               - Maintain a professional and respectful tone in all responses.
+               - Avoid making assumptions or providing speculative answers.
+            """),
+            MessagesPlaceholder(variable_name="history"),  # Add chat history to the prompt
+            ("human", "{input}"),
+            ("system", "Context: {context}"),
+        ])
 
         # Load existing embeddings from files
         if "vectors" not in st.session_state:
@@ -138,7 +137,7 @@ col1, col2 = st.columns([1, 4])  # Adjust the ratio as needed
 
 # Display the logo in the first column
 with col1:
-    st.image("BGC Logo Colored.png", width=100)  # Adjust the width as needed
+    st.image("BGC Logo.png", width=100)  # Adjust the width as needed
 
 # Display the title and description in the second column
 with col2:
