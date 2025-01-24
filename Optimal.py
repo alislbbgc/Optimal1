@@ -78,26 +78,35 @@ with st.sidebar:
         st.error("Please enter both API keys to proceed.")
 
 # Main area for chat interface
-if interface_language == "Arabic":
-    st.title("محمد الياسين | بوت الدردشة BGC")
-    st.write("""
-    **مرحبًا!**  
-    هذا بوت الدردشة الخاص بشركة غاز البصرة (BGC). يمكنك استخدام هذا البوت للحصول على معلومات حول الشركة وأنشطتها.  
-    **كيفية الاستخدام:**  
-    - اكتب سؤالك في مربع النص أدناه.  
-    - أو استخدم زر المايكروفون للتحدث مباشرة.  
-    - سيتم الرد عليك بناءً على المعلومات المتاحة.  
-    """)
-else:
-    st.title("Mohammed Al-Yaseen | BGC ChatBot")
-    st.write("""
-    **Welcome!**  
-    This is the Basrah Gas Company (BGC) ChatBot. You can use this bot to get information about the company and its activities.  
-    **How to use:**  
-    - Type your question in the text box below.  
-    - Or use the microphone button to speak directly.  
-    - You will receive a response based on the available information.  
-    """)
+# Use columns to display logo and title side by side
+col1, col2 = st.columns([1, 4])  # Adjust the ratio as needed
+
+# Display the logo in the first column
+with col1:
+    st.image("BGC Logo.png", width=100)  # Adjust the width as needed
+
+# Display the title and description in the second column
+with col2:
+    if interface_language == "Arabic":
+        st.title("محمد الياسين | بوت الدردشة BGC")
+        st.write("""
+        **مرحبًا!**  
+        هذا بوت الدردشة الخاص بشركة غاز البصرة (BGC). يمكنك استخدام هذا البوت للحصول على معلومات حول الشركة وأنشطتها.  
+        **كيفية الاستخدام:**  
+        - اكتب سؤالك في مربع النص أدناه.  
+        - أو استخدم زر المايكروفون للتحدث مباشرة.  
+        - سيتم الرد عليك بناءً على المعلومات المتاحة.  
+        """)
+    else:
+        st.title("Mohammed Al-Yaseen | BGC ChatBot")
+        st.write("""
+        **Welcome!**  
+        This is the Basrah Gas Company (BGC) ChatBot. You can use this bot to get information about the company and its activities.  
+        **How to use:**  
+        - Type your question in the text box below.  
+        - Or use the microphone button to speak directly.  
+        - You will receive a response based on the available information.  
+        """)
 
 # Initialize session state for chat messages if not already done
 if "messages" not in st.session_state:
