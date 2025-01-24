@@ -93,15 +93,15 @@ if human_input := st.chat_input("Ask something about the document"):
             st.markdown(assistant_response)
 
         # Display supporting information from documents
-              with st.expander("Supporting Information"):
-                    if "context" in response:
-                        for i, doc in enumerate(response["context"]):
-                            page_number = doc.metadata.get("page", "unknown")
-                            st.write(f"According to Page: {page_number}")
-                            st.write(doc.page_content)
-                            st.write("--------------------------------")
-                    else:
-                        st.write("No context available.")
+            with st.expander("Supporting Information"):
+                if "context" in response:
+                    for i, doc in enumerate(response["context"]):
+                        page_number = doc.metadata.get("page", "unknown")
+                        st.write(f"According to Page: {page_number}")
+                        st.write(doc.page_content)
+                        st.write("--------------------------------")
+                else:
+                    st.write("No context available.")
         st.session_state.messages.append(
             {"role": "assistant", "content": assistant_response}
         )
