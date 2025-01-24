@@ -22,7 +22,10 @@ st.set_page_config(
 
 # Sidebar configuration
 with st.sidebar:
-    st.title("Chat Using Your Voice 🗣️")
+    st.title("Settings")
+
+    # Language selection dropdown
+    interface_language = st.selectbox("Interface Language", ["English", "Arabic"])
 
     # Validate API key inputs and initialize components if valid
     if groq_api_key and google_api_key:
@@ -60,8 +63,8 @@ with st.sidebar:
                     st.error(f"Error loading embeddings: {str(e)}")
                     st.session_state.vectors = None
 
-        # Voice language selection
-        voice_language = st.selectbox("Voice Input Language", ["English", "Arabic"])
+        # Voice language selection (default to interface language)
+        voice_language = st.selectbox("Voice Input Language", ["English", "Arabic"], index=0 if interface_language == "English" else 1)
 
         # Microphone button in the sidebar
         st.markdown("### Voice Input")
@@ -78,7 +81,10 @@ with st.sidebar:
         st.error("Please enter both API keys to proceed.")
 
 # Main area for chat interface
-st.title("Mohammed Al-Yaseen | BGC ChatBot")
+if interface_language == "Arabic":
+    st.title("محمد الياسين | بوت الدردشة BGC")
+else:
+    st.title("Mohammed Al-Yaseen | BGC ChatBot")
 
 # Initialize session state for chat messages if not already done
 if "messages" not in st.session_state:
@@ -128,7 +134,7 @@ if voice_input:
         st.session_state.memory.chat_memory.add_ai_message(assistant_response)
 
         # Display supporting information (page numbers only)
-        with st.expander("Supporting Information"):
+        with st.expander("Supporting Information" if interface_language == "English" else "المعلومات الداعمة"):
             if "context" in response:
                 # Extract unique page numbers from the context
                 page_numbers = set()
@@ -140,15 +146,15 @@ if voice_input:
                 # Display the page numbers
                 if page_numbers:
                     page_numbers_str = ", ".join(map(str, sorted(page_numbers)))  # Sort pages numerically and convert back to strings
-                    st.write(f"This answer is according to pages: {page_numbers_str}")
+                    st.write(f"This answer is according to pages: {page_numbers_str}" if interface_language == "English" else f"هذه الإجابة وفقًا للصفحات: {page_numbers_str}")
                 else:
-                    st.write("No valid page numbers available in the context.")
+                    st.write("No valid page numbers available in the context." if interface_language == "English" else "لا توجد أرقام صفحات صالحة في السياق.")
             else:
-                st.write("No context available.")
+                st.write("No context available." if interface_language == "English" else "لا يوجد سياق متاح.")
     else:
         # Prompt user to ensure embeddings are loaded
         assistant_response = (
-            "Embeddings not loaded. Please check if the embeddings path is correct."
+            "Embeddings not loaded. Please check if the embeddings path is correct." if interface_language == "English" else "لم يتم تحميل التضميدات. يرجى التحقق مما إذا كان مسار التضميدات صحيحًا."
         )
         st.session_state.messages.append(
             {"role": "assistant", "content": assistant_response}
@@ -157,7 +163,10 @@ if voice_input:
             st.markdown(assistant_response)
 
 # Text input field
-human_input = st.chat_input("Type your question here...")
+if interface_language == "Arabic":
+    human_input = st.chat_input("اكتب سؤالك هنا...")
+else:
+    human_input = st.chat_input("Type your question here...")
 
 # If text input is detected, process it
 if human_input:
@@ -191,7 +200,7 @@ if human_input:
         st.session_state.memory.chat_memory.add_ai_message(assistant_response)
 
         # Display supporting information (page numbers only)
-        with st.expander("Page References"):
+        with st.expander("Page References" if interface_language == "English" else "مراجع الصفحات"):
             if "context" in response:
                 # Extract unique page numbers from the context
                 page_numbers = set()
@@ -203,15 +212,15 @@ if human_input:
                 # Display the page numbers
                 if page_numbers:
                     page_numbers_str = ", ".join(map(str, sorted(page_numbers)))  # Sort pages numerically and convert back to strings
-                    st.write(f"This answer is according to pages: {page_numbers_str}")
+                    st.write(f"This answer is according to pages: {page_numbers_str}" if interface_language == "English" else f"هذه الإجابة وفقًا للصفحات: {page_numbers_str}")
                 else:
-                    st.write("No valid page numbers available in the context.")
+                    st.write("No valid page numbers available in the context." if interface_language == "English" else "لا توجد أرقام صفحات صالحة في السياق.")
             else:
-                st.write("No context available.")
+                st.write("No context available." if interface_language == "English" else "لا يوجد سياق متاح.")
     else:
         # Prompt user to ensure embeddings are loaded
         assistant_response = (
-            "Embeddings not loaded. Please check if the embeddings path is correct."
+            "Embeddings not loaded. Please check if the embeddings path is correct." if interface_language == "English" else "لم يتم تحميل التضميدات. يرجى التحقق مما إذا كان مسار التضميدات صحيحًا."
         )
         st.session_state.messages.append(
             {"role": "assistant", "content": assistant_response}
