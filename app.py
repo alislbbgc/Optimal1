@@ -37,9 +37,9 @@ with st.sidebar:
         )
 
         # File uploader for multiple PDFs
-        uploaded_files = st.file_uploader(
-            "Upload PDF(s)", type="pdf", accept_multiple_files=True
-        )
+        # uploaded_files = st.file_uploader(
+        #     "Upload PDF(s)", type="pdf", accept_multiple_files=True
+        # )
 
         # Load existing embeddings from files
         if "vectors" not in st.session_state:
