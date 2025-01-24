@@ -1,14 +1,11 @@
 import streamlit as st
 import os
 from langchain_groq import ChatGroq
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.chains import create_retrieval_chain
 from langchain_community.vectorstores import FAISS
-from langchain_community.document_loaders import PyPDFLoader
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-import tempfile
 
 # Initialize API key variables
 groq_api_key = "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"
@@ -36,11 +33,6 @@ with st.sidebar:
             """
         )
 
-        # File uploader for multiple PDFs
-        # uploaded_files = st.file_uploader(
-        #     "Upload PDF(s)", type="pdf", accept_multiple_files=True
-        # )
-
         # Load existing embeddings from files
         if "vectors" not in st.session_state:
             with st.spinner("Loading embeddings... Please wait."):
@@ -61,53 +53,6 @@ with st.sidebar:
                 except Exception as e:
                     st.error(f"Error loading embeddings: {str(e)}")
                     st.session_state.vectors = None
-
-        # Process uploaded PDFs when the button is clicked
-        if uploaded_files:
-            if st.button("Process Documents"):
-                with st.spinner("Processing documents... Please wait."):
-
-                    def vector_embedding(uploaded_files):
-                        if "vectors" not in st.session_state:
-                            # Initialize embeddings if not already done
-                            st.session_state.embeddings = GoogleGenerativeAIEmbeddings(
-                                model="models/embedding-001"
-                            )
-                            all_docs = []
-
-                            # Process each uploaded file
-                            for uploaded_file in uploaded_files:
-                                # Save the uploaded file temporarily
-                                with tempfile.NamedTemporaryFile(
-                                    delete=False, suffix=".pdf"
-                                ) as temp_file:
-                                    temp_file.write(uploaded_file.read())
-                                    temp_file_path = temp_file.name
-
-                                # Load the PDF document
-                                loader = PyPDFLoader(temp_file_path)
-                                docs = loader.load()  # Load document content
-
-                                # Remove the temporary file
-                                os.remove(temp_file_path)
-
-                                # Add loaded documents to the list
-                                all_docs.extend(docs)
-
-                            # Split documents into manageable chunks
-                            text_splitter = RecursiveCharacterTextSplitter(
-                                chunk_size=1000, chunk_overlap=200
-                            )
-                            final_documents = text_splitter.split_documents(all_docs)
-
-                            # Create a vector store with FAISS
-                            st.session_state.vectors = FAISS.from_documents(
-                                final_documents, st.session_state.embeddings
-                            )
-
-                    vector_embedding(uploaded_files)
-                    st.sidebar.write("Documents processed successfully :partying_face:")
-
     else:
         st.error("Please enter both API keys to proceed.")
 
@@ -152,9 +97,9 @@ if human_input := st.chat_input("Ask something about the document"):
                 st.write(doc.page_content)
                 st.write("--------------------------------")
     else:
-        # Prompt user to upload and process documents if no vectors are available
+        # Prompt user to ensure embeddings are loaded
         assistant_response = (
-            "Please upload and process documents before asking questions."
+            "Embeddings not loaded. Please check if the embeddings path is correct."
         )
         st.session_state.messages.append(
             {"role": "assistant", "content": assistant_response}
