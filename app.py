@@ -2,10 +2,11 @@ import streamlit as st
 import os
 from langchain_groq import ChatGroq
 from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains import create_retrieval_chain
 from langchain_community.vectorstores import FAISS
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain.memory import ConversationBufferMemory
 from streamlit_mic_recorder import speech_to_text  # Import speech-to-text function
 
 # Initialize API key variables
@@ -24,17 +25,13 @@ with st.sidebar:
         # Initialize ChatGroq with the provided Groq API key
         llm = ChatGroq(groq_api_key=groq_api_key, model_name="gemma2-9b-it")
 
-        # Define the chat prompt template
-        prompt = ChatPromptTemplate.from_template(
-            """
-            Answer the questions based on the provided context only.
-            Please provide the most accurate response based on the question.
-            <context>
-            {context}
-            <context>
-            Questions: {input}
-            """
-        )
+        # Define the chat prompt template with memory
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", "Answer the questions based on the provided context only."),
+            MessagesPlaceholder(variable_name="history"),  # Add chat history to the prompt
+            ("human", "{input}"),
+            ("system", "Context: {context}"),
+        ])
 
         # Load existing embeddings from files
         if "vectors" not in st.session_state:
@@ -57,12 +54,16 @@ with st.sidebar:
                     st.error(f"Error loading embeddings: {str(e)}")
                     st.session_state.vectors = None
 
+        # Voice language selection
+        voice_language = st.selectbox("Voice Input Language", ["English", "Arabic"])
+
         # Microphone button in the sidebar
         st.markdown("### Voice Input")
+        input_lang_code = "ar" if voice_language == "Arabic" else "en"  # Set language code
         voice_input = speech_to_text(
             start_prompt="🎤 Click to speak",
             stop_prompt="⏹️ Stop",
-            language="en",  # Language (en for English)
+            language=input_lang_code,  # Language (en for English, ar for Arabic)
             use_container_width=True,
             just_once=True,
             key="mic_button",
@@ -76,6 +77,13 @@ st.title("Chat with PDF 🗨️")
 # Initialize session state for chat messages if not already done
 if "messages" not in st.session_state:
     st.session_state.messages = []
+
+# Initialize memory if not already done
+if "memory" not in st.session_state:
+    st.session_state.memory = ConversationBufferMemory(
+        memory_key="history",
+        return_messages=True
+    )
 
 # Display chat history
 for message in st.session_state.messages:
@@ -95,7 +103,11 @@ if voice_input:
         retrieval_chain = create_retrieval_chain(retriever, document_chain)
 
         # Get response from the assistant
-        response = retrieval_chain.invoke({"input": voice_input})
+        response = retrieval_chain.invoke({
+            "input": voice_input,
+            "context": retriever.get_relevant_documents(voice_input),
+            "history": st.session_state.memory.chat_memory.messages  # Include chat history
+        })
         assistant_response = response["answer"]
 
         # Append and display assistant's response
@@ -104,6 +116,10 @@ if voice_input:
         )
         with st.chat_message("assistant"):
             st.markdown(assistant_response)
+
+        # Add user and assistant messages to memory
+        st.session_state.memory.chat_memory.add_user_message(voice_input)
+        st.session_state.memory.chat_memory.add_ai_message(assistant_response)
 
         # Display supporting information (page numbers only)
         with st.expander("Supporting Information"):
@@ -150,7 +166,11 @@ if human_input:
         retrieval_chain = create_retrieval_chain(retriever, document_chain)
 
         # Get response from the assistant
-        response = retrieval_chain.invoke({"input": human_input})
+        response = retrieval_chain.invoke({
+            "input": human_input,
+            "context": retriever.get_relevant_documents(human_input),
+            "history": st.session_state.memory.chat_memory.messages  # Include chat history
+        })
         assistant_response = response["answer"]
 
         # Append and display assistant's response
@@ -159,6 +179,10 @@ if human_input:
         )
         with st.chat_message("assistant"):
             st.markdown(assistant_response)
+
+        # Add user and assistant messages to memory
+        st.session_state.memory.chat_memory.add_user_message(human_input)
+        st.session_state.memory.chat_memory.add_ai_message(assistant_response)
 
         # Display supporting information (page numbers only)
         with st.expander("Supporting Information"):
