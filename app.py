@@ -10,16 +10,12 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 import tempfile
 
-
 # Initialize API key variables
 groq_api_key = "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"
 google_api_key = "AIzaSyDdAiOdIa2I28sphYw36Genb4D--2IN1tU"
 
 # Sidebar configuration
 with st.sidebar:
-    # Expandable section for application information
-    
-
     # Validate API key inputs and initialize components if valid
     if groq_api_key and google_api_key:
         # Set Google API key as environment variable
@@ -44,6 +40,27 @@ with st.sidebar:
         uploaded_files = st.file_uploader(
             "Upload PDF(s)", type="pdf", accept_multiple_files=True
         )
+
+        # Load existing embeddings from files
+        if "vectors" not in st.session_state:
+            with st.spinner("Loading embeddings... Please wait."):
+                # Initialize embeddings
+                embeddings = GoogleGenerativeAIEmbeddings(
+                    model="models/embedding-001"
+                )
+
+                # Load existing FAISS index with safe deserialization
+                embeddings_path = "embeddings"  # Path to your embeddings folder
+                try:
+                    st.session_state.vectors = FAISS.load_local(
+                        embeddings_path,
+                        embeddings,
+                        allow_dangerous_deserialization=True  # Only use if you trust the source of the embeddings
+                    )
+                    st.sidebar.write("Embeddings loaded successfully :partying_face:")
+                except Exception as e:
+                    st.error(f"Error loading embeddings: {str(e)}")
+                    st.session_state.vectors = None
 
         # Process uploaded PDFs when the button is clicked
         if uploaded_files:
