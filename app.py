@@ -1,15 +1,11 @@
 import streamlit as st
 import os
 from langchain_groq import ChatGroq
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
+from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains import create_retrieval_chain
 from langchain_community.vectorstores import FAISS
-from langchain_community.document_loaders import PyPDFLoader
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-import tempfile
-
 
 # Initialize API key variables
 groq_api_key = "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"
@@ -17,36 +13,6 @@ google_api_key = "AIzaSyDdAiOdIa2I28sphYw36Genb4D--2IN1tU"
 
 # Sidebar configuration
 with st.sidebar:
-    # Expandable section for application information
-    with st.expander("🔍 About", expanded=True):
-        st.write(
-            "Welcome to **Chat with PDF**! This tool allows you to interact with PDF documents easily. "
-            "Upload your documents and ask questions about their content directly."
-        )
-
-    # Expandable section with usage instructions
-    with st.expander("📝 Guide", expanded=False):
-        st.write(
-            "Follow these steps to use **Chat with PDF**:\n\n"
-            "1. **🔑 Enter API Keys**: Input your Groq and Google API keys in the 'Settings' section.\n"
-            "2. **📄 Upload PDF(s)**: Select and upload the PDFs you want to interact with.\n"
-            "3. **🔍 Process Documents**: Click 'Process Documents' to analyze the PDFs.\n"
-            "4. **💬 Start Chat**: Ask questions in the chat box to receive responses based on the document content.\n"
-            "5. **📑 View Context**: Relevant sections from the documents used for responses will be shown in the chat."
-        )
-
-    st.header("Settings")
-
-    st.write(
-        "🔑 **API Keys Required**:\n"
-        "- Get your Groq API key from [Groq API Key Page](https://console.groq.com/keys).\n"
-        "- Get your Google API key from [Google API Key Page](https://aistudio.google.com/app/apikey)."
-    )
-
-    # Input fields for API keys
-    # groq_api_key = st.text_input("Enter your Groq API key:", type="password")
-    # google_api_key = st.text_input("Enter your Google API key:", type="password")
-
     # Validate API key inputs and initialize components if valid
     if groq_api_key and google_api_key:
         # Set Google API key as environment variable
@@ -62,61 +28,31 @@ with st.sidebar:
             Please provide the most accurate response based on the question.
             <context>
             {context}
-            <context>
-            Questions: {input}
+            </context>
+            Question: {input}
             """
         )
 
-        # File uploader for multiple PDFs
-        uploaded_files = st.file_uploader(
-            "Upload PDF(s)", type="pdf", accept_multiple_files=True
-        )
+        # Load existing embeddings from files
+        if "vectors" not in st.session_state:
+            with st.spinner("Loading embeddings... Please wait."):
+                # Initialize embeddings
+                embeddings = GoogleGenerativeAIEmbeddings(
+                    model="models/embedding-001"
+                )
 
-        # Process uploaded PDFs when the button is clicked
-        if uploaded_files:
-            if st.button("Process Documents"):
-                with st.spinner("Processing documents... Please wait."):
-
-                    def vector_embedding(uploaded_files):
-                        if "vectors" not in st.session_state:
-                            # Initialize embeddings if not already done
-                            st.session_state.embeddings = GoogleGenerativeAIEmbeddings(
-                                model="models/embedding-001"
-                            )
-                            all_docs = []
-
-                            # Process each uploaded file
-                            for uploaded_file in uploaded_files:
-                                # Save the uploaded file temporarily
-                                with tempfile.NamedTemporaryFile(
-                                    delete=False, suffix=".pdf"
-                                ) as temp_file:
-                                    temp_file.write(uploaded_file.read())
-                                    temp_file_path = temp_file.name
-
-                                # Load the PDF document
-                                loader = PyPDFLoader(temp_file_path)
-                                docs = loader.load()  # Load document content
-
-                                # Remove the temporary file
-                                os.remove(temp_file_path)
-
-                                # Add loaded documents to the list
-                                all_docs.extend(docs)
-
-                            # Split documents into manageable chunks
-                            text_splitter = RecursiveCharacterTextSplitter(
-                                chunk_size=1000, chunk_overlap=200
-                            )
-                            final_documents = text_splitter.split_documents(all_docs)
-
-                            # Create a vector store with FAISS
-                            st.session_state.vectors = FAISS.from_documents(
-                                final_documents, st.session_state.embeddings
-                            )
-
-                    vector_embedding(uploaded_files)
-                    st.sidebar.write("Documents processed successfully :partying_face:")
+                # Load existing FAISS index with safe deserialization
+                embeddings_path = "embeddings"  # Path to your embeddings folder
+                try:
+                    st.session_state.vectors = FAISS.load_local(
+                        embeddings_path,
+                        embeddings,
+                        allow_dangerous_deserialization=True  # Only use if you trust the source of the embeddings
+                    )
+                    st.sidebar.write("Embeddings loaded successfully :partying_face:")
+                except Exception as e:
+                    st.error(f"Error loading embeddings: {str(e)}")
+                    st.session_state.vectors = None
 
     else:
         st.error("Please enter both API keys to proceed.")
@@ -162,9 +98,9 @@ if human_input := st.chat_input("Ask something about the document"):
                 st.write(doc.page_content)
                 st.write("--------------------------------")
     else:
-        # Prompt user to upload and process documents if no vectors are available
+        # Error message if vectors aren't loaded
         assistant_response = (
-            "Please upload and process documents before asking questions."
+            "Error: Unable to load embeddings. Please check the embeddings folder and ensure the files are correct."
         )
         st.session_state.messages.append(
             {"role": "assistant", "content": assistant_response}
