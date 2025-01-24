@@ -78,18 +78,18 @@ with st.sidebar:
         apply_css_direction("rtl")  # Right-to-left for Arabic
         st.title("الإعدادات")  # Sidebar title in Arabic
 
-# Initialize the PDFSearchAndDisplay class with the default PDF file
-pdf_path = "BGC-Ar.pdf"
-pdf_searcher = PDFSearchAndDisplay()
+        # Initialize the PDFSearchAndDisplay class with the default PDF file
+        pdf_path = "BGC-Ar.pdf"
+        pdf_searcher = PDFSearchAndDisplay()
 
 
     else:
         apply_css_direction("ltr")  # Left-to-right for English
         st.title("Settings")  # Sidebar title in English
 
-# Initialize the PDFSearchAndDisplay class with the default PDF file
-pdf_path = "BGC-En.pdf"
-pdf_searcher = PDFSearchAndDisplay()
+        # Initialize the PDFSearchAndDisplay class with the default PDF file
+        pdf_path = "BGC-En.pdf"
+        pdf_searcher = PDFSearchAndDisplay()
 
 
 
