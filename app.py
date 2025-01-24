@@ -98,15 +98,15 @@ if human_input := st.chat_input("Ask something about the document"):
                 page_numbers = set()
                 for doc in response["context"]:
                     page_number = doc.metadata.get("page", "unknown")
-                    if page_number != "unknown":
-                        page_numbers.add(page_number)
+                    if page_number != "unknown" and str(page_number).isdigit():  # Check if page_number is a valid number
+                        page_numbers.add(int(page_number))  # Convert to integer for sorting
 
                 # Display the page numbers
                 if page_numbers:
-                    page_numbers_str = ", ".join(sorted(page_numbers, key=int))  # Sort pages numerically
+                    page_numbers_str = ", ".join(map(str, sorted(page_numbers)))  # Sort pages numerically and convert back to strings
                     st.write(f"This answer is according to pages: {page_numbers_str}")
                 else:
-                    st.write("No page numbers available in the context.")
+                    st.write("No valid page numbers available in the context.")
             else:
                 st.write("No context available.")
     else:
