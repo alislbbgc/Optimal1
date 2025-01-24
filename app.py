@@ -34,7 +34,7 @@ with st.sidebar:
 
         # Define the chat prompt template with memory
         prompt = ChatPromptTemplate.from_messages([
-            ("system", "Answer questions based on the provided context about Basrah Gas Company without explicitly mentioning the source of information when answering."),
+            ("system", "Answer questions based on the provided context about Basrah Gas Company without explicitly mentioning the source of information when answering also you can answer in english if the question in english or asked for you, and lso you can answer in arabic if the question in arabic or asked for you."),
             MessagesPlaceholder(variable_name="history"),  # Add chat history to the prompt
             ("human", "{input}"),
             ("system", "Context: {context}"),
