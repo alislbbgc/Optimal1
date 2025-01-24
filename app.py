@@ -12,6 +12,85 @@ groq_api_key = "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"
 google_api_key = "AIzaSyDdAiOdIa2I28sphYw36Genb4D--2IN1tU"
 
 # Sidebar configuration
+with st.sidebar:
+
+    # Input fields for API keys
+    # groq_api_key = st.text_input("Enter your Groq API key:", type="password")
+    # google_api_key = st.text_input("Enter your Google API key:", type="password")
+
+    # Validate API key inputs and initialize components if valid
+    if groq_api_key and google_api_key:
+        # Set Google API key as environment variable
+        os.environ["GOOGLE_API_KEY"] = google_api_key
+
+        # Initialize ChatGroq with the provided Groq API key
+        llm = ChatGroq(groq_api_key=groq_api_key, model_name="gemma2-9b-it")
+
+        # Define the chat prompt template
+        prompt = ChatPromptTemplate.from_template(
+            """
+            Answer the questions based on the provided context only.
+            Please provide the most accurate response based on the question.
+            <context>
+            {context}
+            <context>
+            Questions: {input}
+            """
+        )
+
+        # File uploader for multiple PDFs
+        uploaded_files = st.file_uploader(
+            "Upload PDF(s)", type="pdf", accept_multiple_files=True
+        )
+
+        # Process uploaded PDFs when the button is clicked
+        if uploaded_files:
+            if st.button("Process Documents"):
+                with st.spinner("Processing documents... Please wait."):
+
+                    def vector_embedding(uploaded_files):
+                        if "vectors" not in st.session_state:
+                            # Initialize embeddings if not already done
+                            st.session_state.embeddings = GoogleGenerativeAIEmbeddings(
+                                model="models/embedding-001"
+                            )
+                            all_docs = []
+
+                            # Process each uploaded file
+                            for uploaded_file in uploaded_files:
+                                # Save the uploaded file temporarily
+                                with tempfile.NamedTemporaryFile(
+                                    delete=False, suffix=".pdf"
+                                ) as temp_file:
+                                    temp_file.write(uploaded_file.read())
+                                    temp_file_path = temp_file.name
+
+                                # Load the PDF document
+                                loader = PyPDFLoader(temp_file_path)
+                                docs = loader.load()  # Load document content
+
+                                # Remove the temporary file
+                                os.remove(temp_file_path)
+
+                                # Add loaded documents to the list
+                                all_docs.extend(docs)
+
+                            # Split documents into manageable chunks
+                            text_splitter = RecursiveCharacterTextSplitter(
+                                chunk_size=1000, chunk_overlap=200
+                            )
+                            final_documents = text_splitter.split_documents(all_docs)
+
+                            # Create a vector store with FAISS
+                            st.session_state.vectors = FAISS.from_documents(
+                                final_documents, st.session_state.embeddings
+                            )
+
+                    vector_embedding(uploaded_files)
+                    st.sidebar.write("Documents processed successfully :partying_face:")
+
+    else:
+        st.error("Please enter both API keys to proceed.")
 
 # Main area for chat interface
 st.title("Chat with PDF :speech_balloon:")
