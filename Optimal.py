@@ -63,12 +63,9 @@ with st.sidebar:
                     st.error(f"Error loading embeddings: {str(e)}")
                     st.session_state.vectors = None
 
-        # Voice language selection (default to interface language)
-        voice_language = st.selectbox("Voice Input Language", ["English", "Arabic"], index=0 if interface_language == "English" else 1)
-
         # Microphone button in the sidebar
         st.markdown("### Voice Input")
-        input_lang_code = "ar" if voice_language == "Arabic" else "en"  # Set language code
+        input_lang_code = "ar" if interface_language == "Arabic" else "en"  # Set language code based on interface language
         voice_input = speech_to_text(
             start_prompt="🎤",
             stop_prompt="⏹️ Stop",
@@ -83,8 +80,24 @@ with st.sidebar:
 # Main area for chat interface
 if interface_language == "Arabic":
     st.title("محمد الياسين | بوت الدردشة BGC")
+    st.write("""
+    **مرحبًا!**  
+    هذا بوت الدردشة الخاص بشركة غاز البصرة (BGC). يمكنك استخدام هذا البوت للحصول على معلومات حول الشركة وأنشطتها.  
+    **كيفية الاستخدام:**  
+    - اكتب سؤالك في مربع النص أدناه.  
+    - أو استخدم زر المايكروفون للتحدث مباشرة.  
+    - سيتم الرد عليك بناءً على المعلومات المتاحة.  
+    """)
 else:
     st.title("Mohammed Al-Yaseen | BGC ChatBot")
+    st.write("""
+    **Welcome!**  
+    This is the Basrah Gas Company (BGC) ChatBot. You can use this bot to get information about the company and its activities.  
+    **How to use:**  
+    - Type your question in the text box below.  
+    - Or use the microphone button to speak directly.  
+    - You will receive a response based on the available information.  
+    """)
 
 # Initialize session state for chat messages if not already done
 if "messages" not in st.session_state:
