@@ -43,29 +43,58 @@ def apply_css_direction(direction):
         unsafe_allow_html=True,
     )
 
-# PDF Search and Screenshot Class
+# Enhanced PDF Search and Screenshot Class with error handling
 class PDFSearchAndDisplay:
     def __init__(self):
         pass
 
+    def get_total_pages(self, pdf_path):
+        try:
+            with fitz.open(pdf_path) as doc:
+                return doc.page_count
+        except Exception as e:
+            st.error(f"Error opening PDF: {str(e)}")
+            return 0
+
     def search_and_highlight(self, pdf_path, search_term):
         highlighted_pages = []
-        with pdfplumber.open(pdf_path) as pdf:
-            for page_number, page in enumerate(pdf.pages):
-                text = page.extract_text()
-                if search_term in text:
-                    highlighted_pages.append((page_number, text))
+        try:
+            with pdfplumber.open(pdf_path) as pdf:
+                for page_number, page in enumerate(pdf.pages):
+                    text = page.extract_text()
+                    if text and search_term in text:
+                        highlighted_pages.append((page_number, text))
+        except Exception as e:
+            st.error(f"Error searching PDF: {str(e)}")
         return highlighted_pages
 
     def capture_screenshots(self, pdf_path, pages):
-        doc = fitz.open(pdf_path)
         screenshots = []
-        for page_number, _ in pages:
-            page = doc.load_page(page_number)
-            pix = page.get_pixmap()
-            screenshot_path = f"screenshot_page_{page_number}.png"
-            pix.save(screenshot_path)
-            screenshots.append(screenshot_path)
+        try:
+            doc = fitz.open(pdf_path)
+            total_pages = doc.page_count
+            
+            for page_info in pages:
+                page_number, _ = page_info
+                try:
+                    # Convert and validate page number
+                    page_num = int(page_number)
+                    if 0 <= page_num < total_pages:
+                        page = doc.load_page(page_num)
+                        pix = page.get_pixmap()
+                        screenshot_path = f"screenshot_page_{page_num}.png"
+                        pix.save(screenshot_path)
+                        screenshots.append(screenshot_path)
+                    else:
+                        st.warning(f"Skipped invalid page number: {page_num}")
+                except ValueError:
+                    st.warning(f"Invalid page number format: {page_number}")
+                except Exception as e:
+                    st.warning(f"Error processing page {page_number}: {str(e)}")
+            
+            doc.close()
+        except Exception as e:
+            st.error(f"Error accessing PDF file: {str(e)}")
         return screenshots
 
 # Sidebar configuration
@@ -301,10 +330,14 @@ if voice_input:
                         if page_number != "unknown" and str(page_number).isdigit():
                             page_numbers.add(int(page_number))
 
-                    if page_numbers:
-                        pages_str = ", ".join(map(str, sorted(page_numbers)))
+                    # Validate page numbers against actual PDF
+                    total_pages = pdf_searcher.get_total_pages(pdf_path)
+                    valid_pages = [p for p in page_numbers if 0 <= p < total_pages]
+                    
+                    if valid_pages:
+                        pages_str = ", ".join(map(str, sorted(valid_pages)))
                         st.write(f"هذه الإجابة وفقًا للصفحات: {pages_str}" if interface_language == "العربية" else f"This answer is according to pages: {pages_str}")
-                        screenshots = pdf_searcher.capture_screenshots(pdf_path, [(p, "") for p in page_numbers])
+                        screenshots = pdf_searcher.capture_screenshots(pdf_path, [(p, "") for p in valid_pages])
                         for screenshot in screenshots:
                             st.image(screenshot)
                     else:
@@ -340,9 +373,15 @@ if human_input := st.chat_input(input_placeholder):
                         if page_number != "unknown" and str(page_number).isdigit():
                             page_numbers.add(int(page_number))
 
-                    if page_numbers:
-                        pages_str = ", ".join(map(str, sorted(page_numbers)))
+                    # Validate page numbers against actual PDF
+                    total_pages = pdf_searcher.get_total_pages(pdf_path)
+                    valid_pages = [p for p in page_numbers if 0 <= p < total_pages]
+                    
+                    if valid_pages:
+                        pages_str = ", ".join(map(str, sorted(valid_pages)))
                         st.write(f"هذه الإجابة وفقًا للصفحات: {pages_str}" if interface_language == "العربية" else f"This answer is according to pages: {pages_str}")
-                        screenshots = pdf_searcher.capture_screenshots(pdf_path, [(p, "") for p in page_numbers])
+                        screenshots = pdf_searcher.capture_screenshots(pdf_path, [(p, "") for p in valid_pages])
                         for screenshot in screenshots:
                             st.image(screenshot)
+                    else:
+                        st.write("لا توجد أرقام صفحات صالحة في السياق." if interface_language == "العربية" else "No valid page numbers available in the context.")
