@@ -158,18 +158,9 @@ with st.sidebar:
     else:
         st.error("الرجاء إدخال مفاتيح API للمتابعة." if interface_language == "العربية" else "Please enter both API keys to proceed.")
 
-# Add a file uploader to the sidebar
-with st.sidebar:
-    uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"])
-
-# If a PDF file is uploaded, process it
-if uploaded_file:
-    pdf_path = uploaded_file.name
-    with open(pdf_path, "wb") as f:
-        f.write(uploaded_file.getbuffer())
-
-    # Initialize the PDFSearchAndDisplay class
-    pdf_searcher = PDFSearchAndDisplay()
+# Initialize the PDFSearchAndDisplay class with the default PDF file
+pdf_path = "BGC.pdf"
+pdf_searcher = PDFSearchAndDisplay()
 
 # Main area for chat interface
 # Use columns to display logo and title side by side
