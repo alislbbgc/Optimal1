@@ -155,6 +155,13 @@ with st.sidebar:
             just_once=True,
             key="mic_button",
         )
+
+        # Reset button in the sidebar
+        if st.button("إعادة تعيين الدردشة" if interface_language == "العربية" else "Reset Chat"):
+            st.session_state.messages = []  # Clear chat history
+            st.session_state.memory.clear()  # Clear memory
+            st.success("تمت إعادة تعيين الدردشة بنجاح." if interface_language == "العربية" else "Chat has been reset successfully.")
+            st.rerun()  # Rerun the app to reflect changes immediately
     else:
         st.error("الرجاء إدخال مفاتيح API للمتابعة." if interface_language == "العربية" else "Please enter both API keys to proceed.")
 
@@ -203,13 +210,6 @@ if "memory" not in st.session_state:
         memory_key="history",
         return_messages=True
     )
-
-# Reset button
-if st.button("إعادة تعيين الدردشة" if interface_language == "العربية" else "Reset Chat"):
-    st.session_state.messages = []  # Clear chat history
-    st.session_state.memory.clear()  # Clear memory
-    st.success("تمت إعادة تعيين الدردشة بنجاح." if interface_language == "العربية" else "Chat has been reset successfully.")
-    st.rerun()  # Rerun the app to reflect changes immediately
 
 # Display chat history
 for message in st.session_state.messages:
