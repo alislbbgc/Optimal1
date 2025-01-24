@@ -14,6 +14,8 @@ google_api_key = "AIzaSyDdAiOdIa2I28sphYw36Genb4D--2IN1tU"
 
 # Sidebar configuration
 with st.sidebar:
+    st.title("Settings")
+
     # Validate API key inputs and initialize components if valid
     if groq_api_key and google_api_key:
         # Set Google API key as environment variable
@@ -54,6 +56,17 @@ with st.sidebar:
                 except Exception as e:
                     st.error(f"Error loading embeddings: {str(e)}")
                     st.session_state.vectors = None
+
+        # Microphone button in the sidebar
+        st.markdown("### Voice Input")
+        voice_input = speech_to_text(
+            start_prompt="🎤 Click to speak",
+            stop_prompt="⏹️ Stop",
+            language="en",  # Language (en for English)
+            use_container_width=True,
+            just_once=True,
+            key="mic_button",
+        )
     else:
         st.error("Please enter both API keys to proceed.")
 
@@ -68,31 +81,6 @@ if "messages" not in st.session_state:
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
-
-# Custom CSS to position the microphone button above the input field
-st.markdown(
-    """
-    <style>
-    .microphone-button {
-        position: relative;
-        bottom: 10px;  /* Adjust this value to align the button properly */
-        left: 0;
-        z-index: 1;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-# Microphone button above the input field
-voice_input = speech_to_text(
-    start_prompt="🎤",
-    stop_prompt="⏹️ Stop",
-    language="en",  # Language (en for English)
-    use_container_width=True,
-    just_once=True,
-    key="mic_button",
-)
 
 # If voice input is detected, process it
 if voice_input:
