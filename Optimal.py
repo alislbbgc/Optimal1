@@ -60,7 +60,7 @@ class PDFSearchAndDisplay:
     def capture_screenshots(self, pdf_path, pages):
         doc = fitz.open(pdf_path)
         screenshots = []
-        for page_number, _ in pages:
+        for page_number, _ in sorted(pages, key=lambda x: x[0]):  # Sort pages by page number
             page = doc.load_page(page_number)
             pix = page.get_pixmap()
             screenshot_path = f"screenshot_page_{page_number}.png"
@@ -310,7 +310,7 @@ if voice_input:
                         st.write(f"هذه الإجابة وفقًا للصفحات: {page_numbers_str}" if interface_language == "العربية" else f"This answer is according to pages: {page_numbers_str}")
 
                         # Capture and display screenshots of the relevant pages
-                        highlighted_pages = [(page_number, "") for page_number in page_numbers]
+                        highlighted_pages = [(page_number, "") for page_number in sorted(page_numbers)]  # Sort pages before capturing screenshots
                         screenshots = pdf_searcher.capture_screenshots(pdf_path, highlighted_pages)
                         for screenshot in screenshots:
                             st.image(screenshot)
@@ -383,7 +383,7 @@ if human_input:
                         st.write(f"هذه الإجابة وفقًا للصفحات: {page_numbers_str}" if interface_language == "العربية" else f"This Answer is According to Pages: {page_numbers_str}")
 
                         # Capture and display screenshots of the relevant pages
-                        highlighted_pages = [(page_number, "") for page_number in page_numbers]
+                        highlighted_pages = [(page_number, "") for page_number in sorted(page_numbers)]  # Sort pages before capturing screenshots
                         screenshots = pdf_searcher.capture_screenshots(pdf_path, highlighted_pages)
                         for screenshot in screenshots:
                             st.image(screenshot)
