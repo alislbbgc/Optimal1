@@ -12,7 +12,7 @@ groq_api_key = "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"
 google_api_key = "AIzaSyDdAiOdIa2I28sphYw36Genb4D--2IN1tU"
 
 # Sidebar configuration
-with st.sidebar:
+
     # Validate API key inputs and initialize components if valid
     if groq_api_key and google_api_key:
         # Set Google API key as environment variable
@@ -49,7 +49,6 @@ with st.sidebar:
                         embeddings,
                         allow_dangerous_deserialization=True  # Only use if you trust the source of the embeddings
                     )
-                    st.sidebar.write("Embeddings loaded successfully :partying_face:")
                 except Exception as e:
                     st.error(f"Error loading embeddings: {str(e)}")
                     st.session_state.vectors = None
