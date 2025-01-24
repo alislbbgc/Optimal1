@@ -12,40 +12,13 @@ import tempfile
 
 
 # Initialize API key variables
-groq_api_key = None
-google_api_key = None
+groq_api_key = "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"
+google_api_key = "AIzaSyDdAiOdIa2I28sphYw36Genb4D--2IN1tU"
 
 # Sidebar configuration
 with st.sidebar:
     # Expandable section for application information
-    with st.expander("🔍 About", expanded=True):
-        st.write(
-            "Welcome to **Chat with PDF**! This tool allows you to interact with PDF documents easily. "
-            "Upload your documents and ask questions about their content directly."
-        )
-
-    # Expandable section with usage instructions
-    with st.expander("📝 Guide", expanded=False):
-        st.write(
-            "Follow these steps to use **Chat with PDF**:\n\n"
-            "1. **🔑 Enter API Keys**: Input your Groq and Google API keys in the 'Settings' section.\n"
-            "2. **📄 Upload PDF(s)**: Select and upload the PDFs you want to interact with.\n"
-            "3. **🔍 Process Documents**: Click 'Process Documents' to analyze the PDFs.\n"
-            "4. **💬 Start Chat**: Ask questions in the chat box to receive responses based on the document content.\n"
-            "5. **📑 View Context**: Relevant sections from the documents used for responses will be shown in the chat."
-        )
-
-    st.header("Settings")
-
-    st.write(
-        "🔑 **API Keys Required**:\n"
-        "- Get your Groq API key from [Groq API Key Page](https://console.groq.com/keys).\n"
-        "- Get your Google API key from [Google API Key Page](https://aistudio.google.com/app/apikey)."
-    )
-
-    # Input fields for API keys
-    groq_api_key = st.text_input("Enter your Groq API key:", type="password")
-    google_api_key = st.text_input("Enter your Google API key:", type="password")
+    
 
     # Validate API key inputs and initialize components if valid
     if groq_api_key and google_api_key:
