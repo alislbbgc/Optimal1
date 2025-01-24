@@ -22,7 +22,7 @@ st.set_page_config(
 
 # Sidebar configuration
 with st.sidebar:
-    st.title("Chat Using Your Voice 🎤")
+    st.title("Chat Using Your Voice 🗣️")
 
     # Validate API key inputs and initialize components if valid
     if groq_api_key and google_api_key:
