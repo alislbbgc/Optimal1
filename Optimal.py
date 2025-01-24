@@ -43,16 +43,16 @@ def apply_css_direction(direction):
 
 # Sidebar configuration
 with st.sidebar:
-    st.title("Settings")
-
     # Language selection dropdown
-    interface_language = st.selectbox("Interface Language", ["English", "Arabic"])
+    interface_language = st.selectbox("لغة الواجهة", ["English", "العربية"])
 
     # Apply CSS direction based on selected language
-    if interface_language == "Arabic":
+    if interface_language == "العربية":
         apply_css_direction("rtl")  # Right-to-left for Arabic
+        st.title("الإعدادات")  # Sidebar title in Arabic
     else:
         apply_css_direction("ltr")  # Left-to-right for English
+        st.title("Settings")  # Sidebar title in English
 
     # Validate API key inputs and initialize components if valid
     if groq_api_key and google_api_key:
@@ -99,7 +99,7 @@ with st.sidebar:
 
         # Load existing embeddings from files
         if "vectors" not in st.session_state:
-            with st.spinner("Loading embeddings... Please wait." if interface_language == "English" else "جارٍ تحميل التضميدات... الرجاء الانتظار."):
+            with st.spinner("جارٍ تحميل التضميدات... الرجاء الانتظار." if interface_language == "العربية" else "Loading embeddings... Please wait."):
                 # Initialize embeddings
                 embeddings = GoogleGenerativeAIEmbeddings(
                     model="models/embedding-001"
@@ -114,22 +114,22 @@ with st.sidebar:
                         allow_dangerous_deserialization=True  # Only use if you trust the source of the embeddings
                     )
                 except Exception as e:
-                    st.error(f"Error loading embeddings: {str(e)}" if interface_language == "English" else f"حدث خطأ أثناء تحميل التضميدات: {str(e)}")
+                    st.error(f"حدث خطأ أثناء تحميل التضميدات: {str(e)}" if interface_language == "العربية" else f"Error loading embeddings: {str(e)}")
                     st.session_state.vectors = None
 
         # Microphone button in the sidebar
-        st.markdown("### Voice Input" if interface_language == "English" else "### الإدخال الصوتي")
-        input_lang_code = "ar" if interface_language == "Arabic" else "en"  # Set language code based on interface language
+        st.markdown("### الإدخال الصوتي" if interface_language == "العربية" else "### Voice Input")
+        input_lang_code = "ar" if interface_language == "العربية" else "en"  # Set language code based on interface language
         voice_input = speech_to_text(
             start_prompt="🎤",
-            stop_prompt="⏹️ Stop" if interface_language == "English" else "⏹️ إيقاف",
+            stop_prompt="⏹️ إيقاف" if interface_language == "العربية" else "⏹️ Stop",
             language=input_lang_code,  # Language (en for English, ar for Arabic)
             use_container_width=True,
             just_once=True,
             key="mic_button",
         )
     else:
-        st.error("Please enter both API keys to proceed." if interface_language == "English" else "الرجاء إدخال مفاتيح API للمتابعة.")
+        st.error("الرجاء إدخال مفاتيح API للمتابعة." if interface_language == "العربية" else "Please enter both API keys to proceed.")
 
 # Main area for chat interface
 # Use columns to display logo and title side by side
@@ -141,7 +141,7 @@ with col1:
 
 # Display the title and description in the second column
 with col2:
-    if interface_language == "Arabic":
+    if interface_language == "العربية":
         st.title("محمد الياسين | بوت الدردشة BGC")
         st.write("""
         **مرحبًا!**  
@@ -210,7 +210,7 @@ if voice_input:
         st.session_state.memory.chat_memory.add_ai_message(assistant_response)
 
         # Display supporting information (page numbers only)
-        with st.expander("Supporting Information" if interface_language == "English" else "المعلومات الداعمة"):
+        with st.expander("المعلومات الداعمة" if interface_language == "العربية" else "Supporting Information"):
             if "context" in response:
                 # Extract unique page numbers from the context
                 page_numbers = set()
@@ -222,15 +222,15 @@ if voice_input:
                 # Display the page numbers
                 if page_numbers:
                     page_numbers_str = ", ".join(map(str, sorted(page_numbers)))  # Sort pages numerically and convert back to strings
-                    st.write(f"This answer is according to pages: {page_numbers_str}" if interface_language == "English" else f"هذه الإجابة وفقًا للصفحات: {page_numbers_str}")
+                    st.write(f"هذه الإجابة وفقًا للصفحات: {page_numbers_str}" if interface_language == "العربية" else f"This answer is according to pages: {page_numbers_str}")
                 else:
-                    st.write("No valid page numbers available in the context." if interface_language == "English" else "لا توجد أرقام صفحات صالحة في السياق.")
+                    st.write("لا توجد أرقام صفحات صالحة في السياق." if interface_language == "العربية" else "No valid page numbers available in the context.")
             else:
-                st.write("No context available." if interface_language == "English" else "لا يوجد سياق متاح.")
+                st.write("لا يوجد سياق متاح." if interface_language == "العربية" else "No context available.")
     else:
         # Prompt user to ensure embeddings are loaded
         assistant_response = (
-            "Embeddings not loaded. Please check if the embeddings path is correct." if interface_language == "English" else "لم يتم تحميل التضميدات. يرجى التحقق مما إذا كان مسار التضميدات صحيحًا."
+            "لم يتم تحميل التضميدات. يرجى التحقق مما إذا كان مسار التضميدات صحيحًا." if interface_language == "العربية" else "Embeddings not loaded. Please check if the embeddings path is correct."
         )
         st.session_state.messages.append(
             {"role": "assistant", "content": assistant_response}
@@ -239,7 +239,7 @@ if voice_input:
             st.markdown(assistant_response)
 
 # Text input field
-if interface_language == "Arabic":
+if interface_language == "العربية":
     human_input = st.chat_input("اكتب سؤالك هنا...")
 else:
     human_input = st.chat_input("Type your question here...")
@@ -276,7 +276,7 @@ if human_input:
         st.session_state.memory.chat_memory.add_ai_message(assistant_response)
 
         # Display supporting information (page numbers only)
-        with st.expander("Page References" if interface_language == "English" else "مراجع الصفحات"):
+        with st.expander("مراجع الصفحات" if interface_language == "العربية" else "Page References"):
             if "context" in response:
                 # Extract unique page numbers from the context
                 page_numbers = set()
@@ -288,15 +288,15 @@ if human_input:
                 # Display the page numbers
                 if page_numbers:
                     page_numbers_str = ", ".join(map(str, sorted(page_numbers)))  # Sort pages numerically and convert back to strings
-                    st.write(f"This answer is according to pages: {page_numbers_str}" if interface_language == "English" else f"هذه الإجابة وفقًا للصفحات: {page_numbers_str}")
+                    st.write(f"هذه الإجابة وفقًا للصفحات: {page_numbers_str}" if interface_language == "العربية" else f"This answer is according to pages: {page_numbers_str}")
                 else:
-                    st.write("No valid page numbers available in the context." if interface_language == "English" else "لا توجد أرقام صفحات صالحة في السياق.")
+                    st.write("لا توجد أرقام صفحات صالحة في السياق." if interface_language == "العربية" else "No valid page numbers available in the context.")
             else:
-                st.write("No context available." if interface_language == "English" else "لا يوجد سياق متاح.")
+                st.write("لا يوجد سياق متاح." if interface_language == "العربية" else "No context available.")
     else:
         # Prompt user to ensure embeddings are loaded
         assistant_response = (
-            "Embeddings not loaded. Please check if the embeddings path is correct." if interface_language == "English" else "لم يتم تحميل التضميدات. يرجى التحقق مما إذا كان مسار التضميدات صحيحًا."
+            "لم يتم تحميل التضميدات. يرجى التحقق مما إذا كان مسار التضميدات صحيحًا." if interface_language == "العربية" else "Embeddings not loaded. Please check if the embeddings path is correct."
         )
         st.session_state.messages.append(
             {"role": "assistant", "content": assistant_response}
