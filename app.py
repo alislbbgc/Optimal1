@@ -97,7 +97,7 @@ if human_input := st.chat_input("Ask something about the document"):
                 for i, doc in enumerate(response["context"]):
                     page_number = doc.metadata.get("page", "unknown")  # Get page number from metadata
                     st.write(f"According to Page: {page_number}")
-                    st.write(doc.page_content)
+                    # st.write(doc.page_content)
                     st.write("--------------------------------")
             else:
                 st.write("No context available.")
