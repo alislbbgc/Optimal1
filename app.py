@@ -61,7 +61,7 @@ with st.sidebar:
         st.markdown("### Voice Input")
         input_lang_code = "ar" if voice_language == "Arabic" else "en"  # Set language code
         voice_input = speech_to_text(
-            start_prompt="🎤 Click to speak",
+            start_prompt="🎤",
             stop_prompt="⏹️ Stop",
             language=input_lang_code,  # Language (en for English, ar for Arabic)
             use_container_width=True,
