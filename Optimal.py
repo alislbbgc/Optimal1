@@ -216,6 +216,48 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
+# List of negative phrases to check for unclear or insufficient answers
+negative_phrases = [
+    "I'm sorry",
+    "عذرًا",
+    "لا أملك معلومات كافية",
+    "I don't have enough information",
+    "لم أتمكن من فهم سؤالك",
+    "I couldn't understand your question",
+    "لا يمكنني الإجابة على هذا السؤال",
+    "I cannot answer this question",
+    "يرجى تقديم المزيد من التفاصيل",
+    "Please provide more details",
+    "غير واضح",
+    "Unclear",
+    "غير متأكد",
+    "Not sure",
+    "لا أعرف",
+    "I don't know",
+    "غير متاح",
+    "Not available",
+    "غير موجود",
+    "Not found",
+    "غير معروف",
+    "Unknown",
+    "غير محدد",
+    "Unspecified",
+    "غير مؤكد",
+    "Uncertain",
+    "غير كافي",
+    "Insufficient",
+    "غير دقيق",
+    "Inaccurate",
+    "غير مفهوم",
+    "Not clear",
+    "غير مكتمل",
+    "Incomplete",
+    "غير صحيح",
+    "Incorrect",
+    "غير مناسب",
+    "Inappropriate"
+]
+
 # If voice input is detected, process it
 if voice_input:
     st.session_state.messages.append({"role": "user", "content": voice_input})
@@ -247,8 +289,8 @@ if voice_input:
         st.session_state.memory.chat_memory.add_user_message(voice_input)
         st.session_state.memory.chat_memory.add_ai_message(assistant_response)
 
-        # Display supporting information (screenshots of relevant pages) only if the response is clear and has enough information
-        if "I'm sorry" not in assistant_response and "عذرًا" not in assistant_response:
+        # Check if the response contains any negative phrases
+        if not any(phrase in assistant_response for phrase in negative_phrases):
             with st.expander("مراجع الصفحات" if interface_language == "العربية" else "Page References"):
                 if "context" in response:
                     # Extract unique page numbers from the context
@@ -320,8 +362,8 @@ if human_input:
         st.session_state.memory.chat_memory.add_user_message(human_input)
         st.session_state.memory.chat_memory.add_ai_message(assistant_response)
 
-        # Display supporting information (screenshots of relevant pages) only if the response is clear and has enough information
-        if "I'm sorry" not in assistant_response and "عذرًا" not in assistant_response:
+        # Check if the response contains any negative phrases
+        if not any(phrase in assistant_response for phrase in negative_phrases):
             with st.expander("مراجع الصفحات" if interface_language == "العربية" else "Page References"):
                 if "context" in response:
                     # Extract unique page numbers from the context
