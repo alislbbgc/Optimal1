@@ -91,14 +91,22 @@ if human_input := st.chat_input("Ask something about the document"):
         with st.chat_message("assistant"):
             st.markdown(assistant_response)
 
-        # Supporting Information
+        # Supporting Information (Page Numbers Only)
         with st.expander("Supporting Information"):
             if "context" in response:
-                for i, doc in enumerate(response["context"]):
-                    page_number = doc.metadata.get("page", "unknown")  # Get page number from metadata
-                    st.write(f"According to Page: {page_number}")
-                    # st.write(doc.page_content)
-                    st.write("--------------------------------")
+                # Extract unique page numbers from the context
+                page_numbers = set()
+                for doc in response["context"]:
+                    page_number = doc.metadata.get("page", "unknown")
+                    if page_number != "unknown":
+                        page_numbers.add(page_number)
+
+                # Display the page numbers
+                if page_numbers:
+                    page_numbers_str = ", ".join(sorted(page_numbers, key=int))  # Sort pages numerically
+                    st.write(f"This answer is according to pages: {page_numbers_str}")
+                else:
+                    st.write("No page numbers available in the context.")
             else:
                 st.write("No context available.")
     else:
