@@ -12,49 +12,6 @@ groq_api_key = "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"
 google_api_key = "AIzaSyDdAiOdIa2I28sphYw36Genb4D--2IN1tU"
 
 # Sidebar configuration
-with st.sidebar:
-    # Validate API key inputs and initialize components if valid
-    if groq_api_key and google_api_key:
-        # Set Google API key as environment variable
-        os.environ["GOOGLE_API_KEY"] = google_api_key
-
-        # Initialize ChatGroq with the provided Groq API key
-        llm = ChatGroq(groq_api_key=groq_api_key, model_name="gemma2-9b-it")
-
-        # Define the chat prompt template
-        prompt = ChatPromptTemplate.from_template(
-            """
-            Answer the questions based on the provided context only.
-            Please provide the most accurate response based on the question.
-            <context>
-            {context}
-            </context>
-            Question: {input}
-            """
-        )
-
-        # Load existing embeddings from files
-        if "vectors" not in st.session_state:
-            with st.spinner("Loading embeddings... Please wait."):
-                # Initialize embeddings
-                embeddings = GoogleGenerativeAIEmbeddings(
-                    model="models/embedding-001"
-                )
-
-                # Load existing FAISS index with safe deserialization
-                embeddings_path = "embeddings"  # Path to your embeddings folder
-                try:
-                    st.session_state.vectors = FAISS.load_local(
-                        embeddings_path,
-                        embeddings,
-                        allow_dangerous_deserialization=True  # Only use if you trust the source of the embeddings
-                    )
-                except Exception as e:
-                    st.error(f"Error loading embeddings: {str(e)}")
-                    st.session_state.vectors = None
-
-    else:
-        st.error("Please enter both API keys to proceed.")
 
 # Main area for chat interface
 st.title("Chat with PDF :speech_balloon:")
