@@ -72,7 +72,7 @@ with st.sidebar:
         st.error("Please enter both API keys to proceed.")
 
 # Main area for chat interface
-st.title("Chat with PDF 🗨️")
+st.title("Mohammed Al-Yaseen | BGC ChatBot")
 
 # Initialize session state for chat messages if not already done
 if "messages" not in st.session_state:
@@ -185,7 +185,7 @@ if human_input:
         st.session_state.memory.chat_memory.add_ai_message(assistant_response)
 
         # Display supporting information (page numbers only)
-        with st.expander("Supporting Information"):
+        with st.expander("Page References"):
             if "context" in response:
                 # Extract unique page numbers from the context
                 page_numbers = set()
