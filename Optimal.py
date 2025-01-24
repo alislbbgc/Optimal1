@@ -8,6 +8,8 @@ from langchain_community.vectorstores import FAISS
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain.memory import ConversationBufferMemory
 from streamlit_mic_recorder import speech_to_text  # Import speech-to-text function
+import fitz  # PyMuPDF for capturing screenshots
+import pdfplumber  # For searching text in PDF
 
 # Initialize API key variables
 groq_api_key = "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"
@@ -40,6 +42,31 @@ def apply_css_direction(direction):
         """,
         unsafe_allow_html=True,
     )
+
+# PDF Search and Screenshot Class
+class PDFSearchAndDisplay:
+    def __init__(self):
+        pass
+
+    def search_and_highlight(self, pdf_path, search_term):
+        highlighted_pages = []
+        with pdfplumber.open(pdf_path) as pdf:
+            for page_number, page in enumerate(pdf.pages):
+                text = page.extract_text()
+                if search_term in text:
+                    highlighted_pages.append((page_number, text))
+        return highlighted_pages
+
+    def capture_screenshots(self, pdf_path, pages):
+        doc = fitz.open(pdf_path)
+        screenshots = []
+        for page_number, _ in pages:
+            page = doc.load_page(page_number)
+            pix = page.get_pixmap()
+            screenshot_path = f"screenshot_page_{page_number}.png"
+            pix.save(screenshot_path)
+            screenshots.append(screenshot_path)
+        return screenshots
 
 # Sidebar configuration
 with st.sidebar:
@@ -131,6 +158,19 @@ with st.sidebar:
     else:
         st.error("الرجاء إدخال مفاتيح API للمتابعة." if interface_language == "العربية" else "Please enter both API keys to proceed.")
 
+# Add a file uploader to the sidebar
+with st.sidebar:
+    uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"])
+
+# If a PDF file is uploaded, process it
+if uploaded_file:
+    pdf_path = uploaded_file.name
+    with open(pdf_path, "wb") as f:
+        f.write(uploaded_file.getbuffer())
+
+    # Initialize the PDFSearchAndDisplay class
+    pdf_searcher = PDFSearchAndDisplay()
+
 # Main area for chat interface
 # Use columns to display logo and title side by side
 col1, col2 = st.columns([1, 4])  # Adjust the ratio as needed
@@ -209,8 +249,8 @@ if voice_input:
         st.session_state.memory.chat_memory.add_user_message(voice_input)
         st.session_state.memory.chat_memory.add_ai_message(assistant_response)
 
-        # Display supporting information (page numbers only)
-        with st.expander("المعلومات الداعمة" if interface_language == "العربية" else "Supporting Information"):
+        # Display supporting information (screenshots of relevant pages)
+        with st.expander("مراجع الصفحات" if interface_language == "العربية" else "Page References"):
             if "context" in response:
                 # Extract unique page numbers from the context
                 page_numbers = set()
@@ -223,6 +263,12 @@ if voice_input:
                 if page_numbers:
                     page_numbers_str = ", ".join(map(str, sorted(page_numbers)))  # Sort pages numerically and convert back to strings
                     st.write(f"هذه الإجابة وفقًا للصفحات: {page_numbers_str}" if interface_language == "العربية" else f"This answer is according to pages: {page_numbers_str}")
+
+                    # Capture and display screenshots of the relevant pages
+                    highlighted_pages = [(page_number, "") for page_number in page_numbers]
+                    screenshots = pdf_searcher.capture_screenshots(pdf_path, highlighted_pages)
+                    for screenshot in screenshots:
+                        st.image(screenshot)
                 else:
                     st.write("لا توجد أرقام صفحات صالحة في السياق." if interface_language == "العربية" else "No valid page numbers available in the context.")
             else:
@@ -275,7 +321,7 @@ if human_input:
         st.session_state.memory.chat_memory.add_user_message(human_input)
         st.session_state.memory.chat_memory.add_ai_message(assistant_response)
 
-        # Display supporting information (page numbers only)
+        # Display supporting information (screenshots of relevant pages)
         with st.expander("مراجع الصفحات" if interface_language == "العربية" else "Page References"):
             if "context" in response:
                 # Extract unique page numbers from the context
@@ -289,6 +335,12 @@ if human_input:
                 if page_numbers:
                     page_numbers_str = ", ".join(map(str, sorted(page_numbers)))  # Sort pages numerically and convert back to strings
                     st.write(f"هذه الإجابة وفقًا للصفحات: {page_numbers_str}" if interface_language == "العربية" else f"This answer is according to pages: {page_numbers_str}")
+
+                    # Capture and display screenshots of the relevant pages
+                    highlighted_pages = [(page_number, "") for page_number in page_numbers]
+                    screenshots = pdf_searcher.capture_screenshots(pdf_path, highlighted_pages)
+                    for screenshot in screenshots:
+                        st.image(screenshot)
                 else:
                     st.write("لا توجد أرقام صفحات صالحة في السياق." if interface_language == "العربية" else "No valid page numbers available in the context.")
             else:
