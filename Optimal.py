@@ -16,7 +16,7 @@ google_api_key = "AIzaSyDdAiOdIa2I28sphYw36Genb4D--2IN1tU"
 # Change the page title and icon
 st.set_page_config(
     page_title="BGC ChatBot",  # Page title
-    page_icon="BGC Logo Colored.png",  # New page icon
+    page_icon="BGC Logo Colored.svg",  # New page icon
     layout="wide"  # Page layout
 )
 
