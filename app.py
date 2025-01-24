@@ -49,13 +49,13 @@ with st.sidebar:
                         embeddings,
                         allow_dangerous_deserialization=True  # Only use if you trust the source of the embeddings
                     )
+                    st.sidebar.write("Embeddings loaded successfully :partying_face:")
                 except Exception as e:
                     st.error(f"Error loading embeddings: {str(e)}")
                     st.session_state.vectors = None
 
     else:
         st.error("Please enter both API keys to proceed.")
-
 
 # Main area for chat interface
 st.title("Chat with PDF :speech_balloon:")
@@ -93,7 +93,7 @@ if human_input := st.chat_input("Ask something about the document"):
             st.markdown(assistant_response)
 
         # Display supporting information from documents
-        with st.expander("Supporting Information"):
+         with st.expander("Supporting Information"):
                 if "context" in response:
                     for i, doc in enumerate(response["context"]):
                         page_number = doc.metadata.get("page", "unknown")
