@@ -18,3 +18,4 @@ streamlit-mic-recorder
 langchain
 langchain-core
 langchain-community
+langdetect==1.0.9
