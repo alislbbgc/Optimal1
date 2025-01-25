@@ -7,9 +7,9 @@ from langchain.chains import create_retrieval_chain
 from langchain_community.vectorstores import FAISS
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain.memory import ConversationBufferMemory
-from streamlit_mic_recorder import speech_to_text  # Import speech-to-text function
-import fitz  # PyMuPDF for capturing screenshots
-import pdfplumber  # For searching text in PDF
+from streamlit_mic_recorder import speech_to_text
+import fitz
+import pdfplumber
 
 # Initialize API key variables
 groq_api_key = "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"
@@ -17,12 +17,11 @@ google_api_key = "AIzaSyDdAiOdIa2I28sphYw36Genb4D--2IN1tU"
 
 # Change the page title and icon
 st.set_page_config(
-    page_title="BGC ChatBot",  # Page title
-    page_icon="BGC Logo Colored.svg",  # New page icon
-    layout="wide"  # Page layout
+    page_title="BGC ChatBot",
+    page_icon="BGC Logo Colored.svg",
+    layout="wide"
 )
 
-# Function to apply CSS based on language direction
 def apply_css_direction(direction):
     st.markdown(
         f"""
@@ -43,7 +42,6 @@ def apply_css_direction(direction):
         unsafe_allow_html=True,
     )
 
-# PDF Search and Screenshot Class
 class PDFSearchAndDisplay:
     def __init__(self):
         pass
@@ -70,343 +68,212 @@ class PDFSearchAndDisplay:
 
 # Sidebar configuration
 with st.sidebar:
-    # Language selection dropdown
     interface_language = st.selectbox("Interface Language", ["English", "العربية"])
-
-    # Apply CSS direction based on selected language
+    
     if interface_language == "العربية":
-        apply_css_direction("rtl")  # Right-to-left for Arabic
-        st.title("الإعدادات")  # Sidebar title in Arabic
-
-        # Initialize the PDFSearchAndDisplay class with the default PDF file
-        pdf_path = "BGC-Ar.pdf"
-        pdf_searcher = PDFSearchAndDisplay()
-
-
+        apply_css_direction("rtl")
+        st.title("الإعدادات")
     else:
-        apply_css_direction("ltr")  # Left-to-right for English
-        st.title("Settings")  # Sidebar title in English
+        apply_css_direction("ltr")
+        st.title("Settings")
 
-        # Initialize the PDFSearchAndDisplay class with the default PDF file
-        pdf_path = "BGC-En.pdf"
-        pdf_searcher = PDFSearchAndDisplay()
-
-
-
-    # Validate API key inputs and initialize components if valid
     if groq_api_key and google_api_key:
-        # Set Google API key as environment variable
         os.environ["GOOGLE_API_KEY"] = google_api_key
-
-        # Initialize ChatGroq with the provided Groq API key
         llm = ChatGroq(groq_api_key=groq_api_key, model_name="gemma2-9b-it")
 
-        # Define the chat prompt template with memory
+        # Handle language change
+        if "current_language" in st.session_state:
+            if st.session_state.current_language != interface_language:
+                if "vectors" in st.session_state:
+                    del st.session_state.vectors
+                if "memory" in st.session_state:
+                    del st.session_state.memory
+                st.session_state.current_language = interface_language
+        else:
+            st.session_state.current_language = interface_language
+
         prompt = ChatPromptTemplate.from_messages([
             ("system", """
-            You are a helpful assistant for Basrah Gas Company (BGC). Your task is to answer questions based on the provided context about BGC. Follow these rules strictly:
+            You are a helpful assistant for Basrah Gas Company (BGC). Follow these rules strictly:
 
             1. **Language Handling:**
-               - If the question is in English, answer in English.
-               - If the question is in Arabic, answer in Arabic.
-               - If the user explicitly asks for a response in a specific language, respond in that language.
+               - Respond in the language of the user's question
+               - If asked for specific language, use that language
 
-            2. **Contextual Answers:**
-               - Provide accurate and concise answers based on the context provided.
-               - Do not explicitly mention the source of information unless asked.
+            2. **Source Restriction:**
+               - Use ONLY the provided {language} documents for answers
+               - Never use information from other languages
 
-            3. **Handling Unclear or Unanswerable Questions:**
-               - If the question is unclear or lacks sufficient context, respond with:
-                 - In English: "I'm sorry, I couldn't understand your question. Could you please provide more details?"
-                 - In Arabic: "عذرًا، لم أتمكن من فهم سؤالك. هل يمكنك تقديم المزيد من التفاصيل؟"
-               - If the question cannot be answered based on the provided context, respond with:
-                 - In English: "I'm sorry, I don't have enough information to answer that question."
-                 - In Arabic: "عذرًا، لا أملك معلومات كافية للإجابة على هذا السؤال."
+            3. **Contextual Answers:**
+               - Base answers strictly on provided context
+               - If unsure, say:
+                 - EN: "I don't have enough information from English documents"
+                 - AR: "لا توجد معلومات كافية من الوثائق العربية"
 
-            4. **User Interface Language:**
-               - If the user has selected Arabic as the interface language, prioritize Arabic in your responses unless the question is explicitly in English.
-               - If the user has selected English as the interface language, prioritize English in your responses unless the question is explicitly in Arabic.
-
-            5. **Professional Tone:**
-               - Maintain a professional and respectful tone in all responses.
-               - Avoid making assumptions or providing speculative answers.
+            4. **Professional Tone:**
+               - Maintain formal, technical language
+               - Use industry-specific terminology
             """),
-            MessagesPlaceholder(variable_name="history"),  # Add chat history to the prompt
+            MessagesPlaceholder(variable_name="history"),
             ("human", "{input}"),
             ("system", "Context: {context}"),
         ])
 
-        # Load existing embeddings from files
         if "vectors" not in st.session_state:
-            with st.spinner("جارٍ تحميل التضميدات... الرجاء الانتظار." if interface_language == "العربية" else "Loading embeddings... Please wait."):
-                # Initialize embeddings
-                embeddings = GoogleGenerativeAIEmbeddings(
-                    model="models/embedding-001"
-                )
-
-                # Load existing FAISS index with safe deserialization
-                embeddings_path = "embeddings"  # Path to your embeddings folder
+            loading_text = "جارٍ تحميل التضميدات..." if interface_language == "العربية" else "Loading embeddings..."
+            with st.spinner(loading_text):
+                embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+                language_folder = "Arabic" if st.session_state.current_language == "العربية" else "English"
+                embeddings_path = f"embeddings/{language_folder}/embeddings"
+                
                 try:
                     st.session_state.vectors = FAISS.load_local(
                         embeddings_path,
                         embeddings,
-                        allow_dangerous_deserialization=True  # Only use if you trust the source of the embeddings
+                        allow_dangerous_deserialization=True
                     )
                 except Exception as e:
-                    st.error(f"حدث خطأ أثناء تحميل التضميدات: {str(e)}" if interface_language == "العربية" else f"Error loading embeddings: {str(e)}")
+                    error_msg = f"خطأ في التحميل: {str(e)}" if interface_language == "العربية" else f"Loading error: {str(e)}"
+                    st.error(error_msg)
                     st.session_state.vectors = None
 
-        # Microphone button in the sidebar
-        st.markdown("### الإدخال الصوتي" if interface_language == "العربية" else "### Voice Input")
-        input_lang_code = "ar" if interface_language == "العربية" else "en"  # Set language code based on interface language
+        # Voice input components
+        input_lang_code = "ar" if interface_language == "العربية" else "en"
         voice_input = speech_to_text(
             start_prompt="🎤",
             stop_prompt="⏹️ إيقاف" if interface_language == "العربية" else "⏹️ Stop",
-            language=input_lang_code,  # Language (en for English, ar for Arabic)
+            language=input_lang_code,
             use_container_width=True,
             just_once=True,
             key="mic_button",
         )
 
-        # Reset button in the sidebar
-        if st.button("إعادة تعيين الدردشة" if interface_language == "العربية" else "Reset Chat"):
-            st.session_state.messages = []  # Clear chat history
-            st.session_state.memory.clear()  # Clear memory
-            st.success("تمت إعادة تعيين الدردشة بنجاح." if interface_language == "العربية" else "Chat has been reset successfully.")
-            st.rerun()  # Rerun the app to reflect changes immediately
-    else:
-        st.error("الرجاء إدخال مفاتيح API للمتابعة." if interface_language == "العربية" else "Please enter both API keys to proceed.")
+        if st.button("إعادة تعيين" if interface_language == "العربية" else "Reset"):
+            st.session_state.messages = []
+            if "memory" in st.session_state:
+                st.session_state.memory.clear()
+            st.rerun()
 
+# Determine PDF path based on current language
+language_folder = "Arabic" if st.session_state.get("current_language", "English") == "العربية" else "English"
+pdf_path = "BGC-Ar.pdf" if language_folder == "Arabic" else "BGC-En.pdf"
+pdf_searcher = PDFSearchAndDisplay()
 
-# Main area for chat interface
-# Use columns to display logo and title side by side
-col1, col2 = st.columns([1, 4])  # Adjust the ratio as needed
-
-# Display the logo in the first column
+# Main chat interface
+col1, col2 = st.columns([1, 4])
 with col1:
-    st.image("BGC Logo Colored.svg", width=100)  # Adjust the width as needed
-
-# Display the title and description in the second column
+    st.image("BGC Logo Colored.svg", width=100)
 with col2:
     if interface_language == "العربية":
         st.title("محمد الياسين | بوت الدردشة BGC")
         st.write("""
         **مرحبًا!**  
-        هذا بوت الدردشة الخاص بشركة غاز البصرة (BGC). يمكنك استخدام هذا البوت للحصول على معلومات حول الشركة وأنشطتها.  
-        **كيفية الاستخدام:**  
-        - اكتب سؤالك في مربع النص أدناه.  
-        - أو استخدم زر المايكروفون للتحدث مباشرة.  
-        - سيتم الرد عليك بناءً على المعلومات المتاحة.  
+        هذا بوت الدردشة الخاص بغاز البصرة. الأسئلة تجيب فقط من الوثائق العربية.
         """)
     else:
         st.title("Mohammed Al-Yaseen | BGC ChatBot")
         st.write("""
         **Welcome!**  
-        This is the Basrah Gas Company (BGC) ChatBot. You can use this bot to get information about the company and its activities.  
-        **How to use:**  
-        - Type your question in the text box below.  
-        - Or use the microphone button to speak directly.  
-        - You will receive a response based on the available information.  
+        This BGC chatbot answers exclusively from English documents.
         """)
 
-# Initialize session state for chat messages if not already done
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Initialize memory if not already done
 if "memory" not in st.session_state:
     st.session_state.memory = ConversationBufferMemory(
         memory_key="history",
         return_messages=True
     )
 
-# List of negative phrases to check for unclear or insufficient answers
 negative_phrases = [
-    "I'm sorry",
-    "عذرًا",
-    "لا أملك معلومات كافية",
-    "I don't have enough information",
-    "لم أتمكن من فهم سؤالك",
-    "I couldn't understand your question",
-    "لا يمكنني الإجابة على هذا السؤال",
-    "I cannot answer this question",
-    "يرجى تقديم المزيد من التفاصيل",
-    "Please provide more details",
-    "غير واضح",
-    "Unclear",
-    "غير متأكد",
-    "Not sure",
-    "لا أعرف",
-    "I don't know",
-    "غير متاح",
-    "Not available",
-    "غير موجود",
-    "Not found",
-    "غير معروف",
-    "Unknown",
-    "غير محدد",
-    "Unspecified",
-    "غير مؤكد",
-    "Uncertain",
-    "غير كافي",
-    "Insufficient",
-    "غير دقيق",
-    "Inaccurate",
-    "غير مفهوم",
-    "Not clear",
-    "غير مكتمل",
-    "Incomplete",
-    "غير صحيح",
-    "Incorrect",
-    "غير مناسب",
-    "Inappropriate",
-    "Please provide me",  # إضافة هذه العبارة
-    "يرجى تزويدي",  # إضافة هذه العبارة
-    "Can you provide more",  # إضافة هذه العبارة
-    "هل يمكنك تقديم المزيد"  # إضافة هذه العبارة
+    "I'm sorry", "عذرًا", "لا أملك معلومات", "I don't have information",
+    "لم أتمكن من فهم", "I couldn't understand", "الوثائق العربية", "English documents"
 ]
 
-# Display chat history
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# If voice input is detected, process it
+def process_input(user_input):
+    if "vectors" in st.session_state and st.session_state.vectors:
+        document_chain = create_stuff_documents_chain(llm, prompt)
+        retriever = st.session_state.vectors.as_retriever()
+        retrieval_chain = create_retrieval_chain(retriever, document_chain)
+        
+        response = retrieval_chain.invoke({
+            "input": user_input,
+            "context": retriever.get_relevant_documents(user_input),
+            "history": st.session_state.memory.chat_memory.messages
+        })
+        
+        return response
+    return None
+
+# Handle voice input
 if voice_input:
     st.session_state.messages.append({"role": "user", "content": voice_input})
     with st.chat_message("user"):
         st.markdown(voice_input)
-
-    if "vectors" in st.session_state and st.session_state.vectors is not None:
-        # Create and configure the document chain and retriever
-        document_chain = create_stuff_documents_chain(llm, prompt)
-        retriever = st.session_state.vectors.as_retriever()
-        retrieval_chain = create_retrieval_chain(retriever, document_chain)
-
-        # Get response from the assistant
-        response = retrieval_chain.invoke({
-            "input": voice_input,
-            "context": retriever.get_relevant_documents(voice_input),
-            "history": st.session_state.memory.chat_memory.messages  # Include chat history
-        })
+    
+    response = process_input(voice_input)
+    if response:
         assistant_response = response["answer"]
-
-        # Append and display assistant's response
-        st.session_state.messages.append(
-            {"role": "assistant", "content": assistant_response}
-        )
+        st.session_state.messages.append({"role": "assistant", "content": assistant_response})
         with st.chat_message("assistant"):
             st.markdown(assistant_response)
-
-        # Add user and assistant messages to memory
+        
         st.session_state.memory.chat_memory.add_user_message(voice_input)
         st.session_state.memory.chat_memory.add_ai_message(assistant_response)
-
-        # Check if the response contains any negative phrases
+        
         if not any(phrase in assistant_response for phrase in negative_phrases):
-            with st.expander("مراجع الصفحات" if interface_language == "العربية" else "Page References"):
-                if "context" in response:
-                    # Extract unique page numbers from the context
-                    page_numbers = set()
-                    for doc in response["context"]:
-                        page_number = doc.metadata.get("page", "unknown")
-                        if page_number != "unknown" and str(page_number).isdigit():  # Check if page_number is a valid number
-                            page_numbers.add(int(page_number))  # Convert to integer for sorting
+            with st.expander("مراجع" if interface_language == "العربية" else "References"):
+                page_numbers = set()
+                for doc in response["context"]:
+                    page = doc.metadata.get("page", "")
+                    if str(page).isdigit():
+                        page_numbers.add(int(page))
+                
+                if page_numbers:
+                    pages_str = ", ".join(map(str, sorted(page_numbers)))
+                    source_note = f"المصدر: الصفحات {pages_str}" if interface_language == "العربية" else f"Source: Pages {pages_str}"
+                    st.write(source_note)
+                    
+                    screenshots = pdf_searcher.capture_screenshots(pdf_path, [(p, "") for p in page_numbers])
+                    for ss in screenshots:
+                        st.image(ss)
 
-                    # Display the page numbers
-                    if page_numbers:
-                        page_numbers_str = ", ".join(map(str, sorted(page_numbers)))  # Sort pages numerically and convert back to strings
-                        st.write(f"هذه الإجابة وفقًا للصفحات: {page_numbers_str}" if interface_language == "العربية" else f"This answer is according to pages: {page_numbers_str}")
-
-                        # Capture and display screenshots of the relevant pages
-                        highlighted_pages = [(page_number, "") for page_number in page_numbers]
-                        screenshots = pdf_searcher.capture_screenshots(pdf_path, highlighted_pages)
-                        for screenshot in screenshots:
-                            st.image(screenshot)
-                    else:
-                        st.write("لا توجد أرقام صفحات صالحة في السياق." if interface_language == "العربية" else "No valid page numbers available in the context.")
-                else:
-                    st.write("لا يوجد سياق متاح." if interface_language == "العربية" else "No context available.")
-    else:
-        # Prompt user to ensure embeddings are loaded
-        assistant_response = (
-            "لم يتم تحميل التضميدات. يرجى التحقق مما إذا كان مسار التضميدات صحيحًا." if interface_language == "العربية" else "Embeddings not loaded. Please check if the embeddings path is correct."
-        )
-        st.session_state.messages.append(
-            {"role": "assistant", "content": assistant_response}
-        )
-        with st.chat_message("assistant"):
-            st.markdown(assistant_response)
-
-# Text input field
-if interface_language == "العربية":
-    human_input = st.chat_input("اكتب سؤالك هنا...")
-else:
-    human_input = st.chat_input("Type your question here...")
-
-# If text input is detected, process it
+# Handle text input
+input_placeholder = "اكتب سؤالك..." if interface_language == "العربية" else "Type your question..."
+human_input = st.chat_input(input_placeholder)
 if human_input:
     st.session_state.messages.append({"role": "user", "content": human_input})
     with st.chat_message("user"):
         st.markdown(human_input)
-
-    if "vectors" in st.session_state and st.session_state.vectors is not None:
-        # Create and configure the document chain and retriever
-        document_chain = create_stuff_documents_chain(llm, prompt)
-        retriever = st.session_state.vectors.as_retriever()
-        retrieval_chain = create_retrieval_chain(retriever, document_chain)
-
-        # Get response from the assistant
-        response = retrieval_chain.invoke({
-            "input": human_input,
-            "context": retriever.get_relevant_documents(human_input),
-            "history": st.session_state.memory.chat_memory.messages  # Include chat history
-        })
+    
+    response = process_input(human_input)
+    if response:
         assistant_response = response["answer"]
-
-        # Append and display assistant's response
-        st.session_state.messages.append(
-            {"role": "assistant", "content": assistant_response}
-        )
+        st.session_state.messages.append({"role": "assistant", "content": assistant_response})
         with st.chat_message("assistant"):
             st.markdown(assistant_response)
-
-        # Add user and assistant messages to memory
+        
         st.session_state.memory.chat_memory.add_user_message(human_input)
         st.session_state.memory.chat_memory.add_ai_message(assistant_response)
-
-        # Check if the response contains any negative phrases
+        
         if not any(phrase in assistant_response for phrase in negative_phrases):
-            with st.expander("مراجع الصفحات" if interface_language == "العربية" else "Page References"):
-                if "context" in response:
-                    # Extract unique page numbers from the context
-                    page_numbers = set()
-                    for doc in response["context"]:
-                        page_number = doc.metadata.get("page", "unknown")
-                        if page_number != "unknown" and str(page_number).isdigit():  # Check if page_number is a valid number
-                            page_numbers.add(int(page_number))  # Convert to integer for sorting
-
-                    # Display the page numbers
-                    if page_numbers:
-                        page_numbers_str = ", ".join(map(str, sorted(page_numbers)))  # Sort pages numerically and convert back to strings
-                        st.write(f"هذه الإجابة وفقًا للصفحات: {page_numbers_str}" if interface_language == "العربية" else f"This Answer is According to Pages: {page_numbers_str}")
-
-                        # Capture and display screenshots of the relevant pages
-                        highlighted_pages = [(page_number, "") for page_number in page_numbers]
-                        screenshots = pdf_searcher.capture_screenshots(pdf_path, highlighted_pages)
-                        for screenshot in screenshots:
-                            st.image(screenshot)
-                    else:
-                        st.write("لا توجد أرقام صفحات صالحة في السياق." if interface_language == "العربية" else "No valid page numbers available in the context.")
-                else:
-                    st.write("لا يوجد سياق متاح." if interface_language == "العربية" else "No context available.")
-    else:
-        # Prompt user to ensure embeddings are loaded
-        assistant_response = (
-            "لم يتم تحميل التضميدات. يرجى التحقق مما إذا كان مسار التضميدات صحيحًا." if interface_language == "العربية" else "Embeddings not loaded. Please check if the embeddings path is correct."
-        )
-        st.session_state.messages.append(
-            {"role": "assistant", "content": assistant_response}
-        )
-        with st.chat_message("assistant"):
-            st.markdown(assistant_response)
+            with st.expander("مراجع" if interface_language == "العربية" else "References"):
+                page_numbers = set()
+                for doc in response["context"]:
+                    page = doc.metadata.get("page", "")
+                    if str(page).isdigit():
+                        page_numbers.add(int(page))
+                
+                if page_numbers:
+                    pages_str = ", ".join(map(str, sorted(page_numbers)))
+                    source_note = f"المصدر: الصفحات {pages_str}" if interface_language == "العربية" else f"Source: Pages {pages_str}"
+                    st.write(source_note)
+                    
+                    screenshots = pdf_searcher.capture_screenshots(pdf_path, [(p, "") for p in page_numbers])
+                    for ss in screenshots:
+                        st.image(ss)
