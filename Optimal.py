@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 from langchain_groq import ChatGroq
+from langdetect import detect, DetectorFactory
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains import create_retrieval_chain
@@ -10,7 +11,9 @@ from langchain.memory import ConversationBufferMemory
 from streamlit_mic_recorder import speech_to_text
 import fitz
 import pdfplumber
-from langdetect import detect
+
+# Initialize detector factory for consistent results
+DetectorFactory.seed = 0
 
 # Initialize API keys
 groq_api_key = "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"
@@ -48,7 +51,7 @@ class PDFHandler:
         
         doc = fitz.open(self.current_pdf)
         screenshots = []
-        for page_number, _ in pages:
+        for page_number in pages:
             page = doc.load_page(page_number)
             pix = page.get_pixmap()
             screenshot_path = f"screenshot_page_{page_number}.png"
@@ -63,7 +66,6 @@ pdf_handler = PDFHandler()
 with st.sidebar:
     st.title("Settings")
     
-    # Initialize API keys
     if groq_api_key and google_api_key:
         os.environ["GOOGLE_API_KEY"] = google_api_key
         llm = ChatGroq(groq_api_key=groq_api_key, model_name="gemma2-9b-it")
@@ -77,7 +79,6 @@ with st.sidebar:
             key="mic_button",
         )
 
-        # Reset button
         if st.button("Reset Chat"):
             st.session_state.clear()
             st.rerun()
@@ -90,17 +91,16 @@ with col2:
     st.title("BGC ChatBot")
     st.write("""
     **Welcome!**  
-    This chatbot answers using company documents in your input language.
+    Multilingual chatbot for Basrah Gas Company documentation
     """)
 
-# Initialize chat memory
+# Initialize chat components
 if "memory" not in st.session_state:
     st.session_state.memory = ConversationBufferMemory(
         memory_key="history",
         return_messages=True
     )
 
-# Initialize messages
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -109,99 +109,92 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Define the validated prompt template
+# Define the core prompt template
 prompt = ChatPromptTemplate.from_messages([
     ("system", """
-    You are a professional assistant for Basrah Gas Company. Follow these rules:
+    You are a professional technical assistant for Basrah Gas Company. Strict rules:
 
-    1. **Language Handling:**
-       - Respond EXCLUSIVELY in the user's question language
-       - Never mix languages in responses
+    1. **Language Policy:**
+       - Respond ONLY in the user's input language
+       - Never translate responses
+       - Maintain technical accuracy
 
     2. **Source Requirements:**
-       - Use ONLY the provided context from documents in the user's language
-       - Never use information from other languages
+       - Use ONLY from the provided context
+       - Never mention document sources unless asked
+       - If no relevant context:
+         - EN: "Information not found in company documents"
+         - AR: "المعلومات غير موجودة في الوثائق الرسمية"
 
-    3. **Uncertain Responses:**
-       - If context is insufficient, respond:
-         - EN: "This information is not available in our documents"
-         - AR: "هذه المعلومات غير متوفرة في الوثائق"
-
-    4. **Formatting:**
-       - Maintain professional tone matching the input language
-       - Use appropriate text direction (RTL/LTR)
+    3. **Formatting:**
+       - Use markdown for technical documentation
+       - Maintain RTL/LTR direction matching input
+       - Use bullet points for lists
+       - Bold important terms
     """),
     MessagesPlaceholder(variable_name="history"),
     ("human", "{input}"),
-    ("system", "Relevant Context: {context}"),
+    ("system", "Document Context: {context}"),
 ])
 
-def detect_language(text):
+def detect_input_language(text):
     try:
-        lang = detect(text)
-        return "ar" if lang == "ar" else "en"
+        return detect(text)
     except:
         return "en"
 
-def load_embeddings(language):
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-    language_folder = "Arabic" if language == "ar" else "English"
-    embeddings_path = f"embeddings/{language_folder}/embeddings"
-    
-    if os.path.exists(embeddings_path):
-        try:
+def load_embeddings(lang_code):
+    try:
+        embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+        lang_folder = "Arabic" if lang_code == "ar" else "English"
+        embeddings_path = f"embeddings/{lang_folder}/embeddings"
+        
+        if os.path.exists(embeddings_path):
             return FAISS.load_local(
                 embeddings_path,
                 embeddings,
                 allow_dangerous_deserialization=True
             )
-        except Exception as e:
-            st.error(f"Loading error: {str(e)}")
-    return None
+        return None
+    except Exception as e:
+        st.error(f"System Error: {str(e)}")
+        return None
 
-# Process user input
-def handle_user_input(user_input):
-    # Detect input language
-    current_lang = detect_language(user_input)
-    apply_css_direction("rtl" if current_lang == "ar" else "ltr")
+def process_query(user_input):
+    lang = detect_input_language(user_input)
+    apply_css_direction("rtl" if lang == "ar" else "ltr")
     
-    # Load appropriate embeddings
-    if "current_lang" not in st.session_state or st.session_state.current_lang != current_lang:
-        st.session_state.vectors = load_embeddings(current_lang)
-        st.session_state.current_lang = current_lang
-    
-    if not user_input.strip():
-        return {
-            "answer": "الرجاء إدخال سؤال صحيح" if current_lang == "ar" else "Please enter a valid question",
-            "context": []
-        }
+    # Load appropriate resources
+    if "current_lang" not in st.session_state or st.session_state.current_lang != lang:
+        st.session_state.vectors = load_embeddings(lang)
+        st.session_state.current_lang = lang
     
     if not st.session_state.vectors:
         return {
-            "answer": "نظام البحث غير جاهز" if current_lang == "ar" else "Search system not ready",
+            "answer": "نظام التوثيق غير متوفر" if lang == "ar" else "Document system unavailable",
             "context": []
         }
-
+    
     try:
-        document_chain = create_stuff_documents_chain(llm, prompt)
         retriever = st.session_state.vectors.as_retriever()
+        document_chain = create_stuff_documents_chain(llm, prompt)
         retrieval_chain = create_retrieval_chain(retriever, document_chain)
         
-        context_docs = retriever.get_relevant_documents(user_input)
-        if not context_docs:
+        context = retriever.get_relevant_documents(user_input)
+        if not context:
             return {
-                "answer": "لا توجد معلومات ذات صلة" if current_lang == "ar" else "No relevant information found",
+                "answer": "لا توجد معلومات ذات صلة" if lang == "ar" else "No relevant information found",
                 "context": []
             }
 
         return retrieval_chain.invoke({
             "input": user_input,
-            "context": context_docs,
+            "context": context,
             "history": st.session_state.memory.chat_memory.messages
         })
     except Exception as e:
         return {
-            "answer": f"خطأ في النظام: {str(e)}" if current_lang == "ar" else f"System error: {str(e)}",
+            "answer": f"خطأ فني: {str(e)}" if lang == "ar" else f"Technical Error: {str(e)}",
             "context": []
         }
 
@@ -211,61 +204,50 @@ if voice_input:
     with st.chat_message("user"):
         st.markdown(voice_input)
     
-    response = handle_user_input(voice_input)
+    response = process_query(voice_input)
     if response:
         assistant_response = response.get("answer", "")
         st.session_state.messages.append({"role": "assistant", "content": assistant_response})
         with st.chat_message("assistant"):
             st.markdown(assistant_response)
         
-        # Update memory
         st.session_state.memory.chat_memory.add_user_message(voice_input)
         st.session_state.memory.chat_memory.add_ai_message(assistant_response)
         
-        # Handle document references
         if response.get("context"):
-            current_lang = detect_language(voice_input)
-            pdf_handler.current_pdf = pdf_handler.get_pdf_path(current_lang)
-            page_numbers = {doc.metadata.get("page") for doc in response["context"] if doc.metadata.get("page") is not None}
-            
-            if page_numbers:
-                with st.expander("المراجع" if current_lang == "ar" else "References"):
-                    pages_str = ", ".join(map(str, sorted(page_numbers)))
-                    st.write(f"الصفحات: {pages_str}" if current_lang == "ar" else f"Pages: {pages_str}")
-                    
-                    screenshots = pdf_handler.capture_screenshots([(p, "") for p in page_numbers])
-                    for ss in screenshots:
-                        st.image(ss)
+            pdf_handler.current_pdf = pdf_handler.get_pdf_path(detect_input_language(voice_input))
+            pages = {doc.metadata.get("page") for doc in response["context"] if doc.metadata.get("page") is not None}
+            if pages:
+                with st.expander("المراجع" if detect_input_language(voice_input) == "ar" else "References"):
+                    st.write(f"الصفحات: {', '.join(map(str, sorted(pages)))}" if detect_input_language(voice_input) == "ar" 
+                            else f"Pages: {', '.join(map(str, sorted(pages)))}")
+                    for screenshot in pdf_handler.capture_screenshots(pages):
+                        st.image(screenshot)
 
 # Handle text input
-user_input = st.chat_input("Type your question here...")
+user_input = st.chat_input("Type your question...")
 if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user"):
         st.markdown(user_input)
     
-    response = handle_user_input(user_input)
+    response = process_query(user_input)
     if response:
         assistant_response = response.get("answer", "")
         st.session_state.messages.append({"role": "assistant", "content": assistant_response})
         with st.chat_message("assistant"):
             st.markdown(assistant_response)
         
-        # Update memory
         st.session_state.memory.chat_memory.add_user_message(user_input)
         st.session_state.memory.chat_memory.add_ai_message(assistant_response)
         
-        # Handle document references
         if response.get("context"):
-            current_lang = detect_language(user_input)
-            pdf_handler.current_pdf = pdf_handler.get_pdf_path(current_lang)
-            page_numbers = {doc.metadata.get("page") for doc in response["context"] if doc.metadata.get("page") is not None}
-            
-            if page_numbers:
-                with st.expander("المراجع" if current_lang == "ar" else "References"):
-                    pages_str = ", ".join(map(str, sorted(page_numbers)))
-                    st.write(f"الصفحات: {pages_str}" if current_lang == "ar" else f"Pages: {pages_str}")
-                    
-                    screenshots = pdf_handler.capture_screenshots([(p, "") for p in page_numbers])
-                    for ss in screenshots:
-                        st.image(ss)
+            lang = detect_input_language(user_input)
+            pdf_handler.current_pdf = pdf_handler.get_pdf_path(lang)
+            pages = {doc.metadata.get("page") for doc in response["context"] if doc.metadata.get("page") is not None}
+            if pages:
+                with st.expander("المراجع" if lang == "ar" else "References"):
+                    st.write(f"الصفحات: {', '.join(map(str, sorted(pages)))}" if lang == "ar" 
+                            else f"Pages: {', '.join(map(str, sorted(pages)))}")
+                    for screenshot in pdf_handler.capture_screenshots(pages):
+                        st.image(screenshot)
