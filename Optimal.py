@@ -12,10 +12,10 @@ from streamlit_mic_recorder import speech_to_text
 import fitz
 import pdfplumber
 
-# Initialize detector factory for consistent results
+# Initialize language detector first
 DetectorFactory.seed = 0
 
-# Initialize API keys
+# API Keys (replace with your actual keys)
 groq_api_key = "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"
 google_api_key = "AIzaSyDdAiOdIa2I28sphYw36Genb4D--2IN1tU"
 
@@ -59,12 +59,12 @@ class PDFHandler:
             screenshots.append(screenshot_path)
         return screenshots
 
-# Initialize PDF handler
+# Initialize components
 pdf_handler = PDFHandler()
 
 # Sidebar configuration
 with st.sidebar:
-    st.title("Settings")
+    st.title("Chat Controls")
     
     if groq_api_key and google_api_key:
         os.environ["GOOGLE_API_KEY"] = google_api_key
@@ -79,22 +79,22 @@ with st.sidebar:
             key="mic_button",
         )
 
-        if st.button("Reset Chat"):
+        if st.button("Reset Conversation"):
             st.session_state.clear()
             st.rerun()
 
-# Main chat interface
+# Main interface
 col1, col2 = st.columns([1, 4])
 with col1:
     st.image("BGC Logo Colored.svg", width=100)
 with col2:
-    st.title("BGC ChatBot")
+    st.title("BGC Multilingual Assistant")
     st.write("""
     **Welcome!**  
-    Multilingual chatbot for Basrah Gas Company documentation
+    Ask questions in English or Arabic about company documents
     """)
 
-# Initialize chat components
+# Initialize session state
 if "memory" not in st.session_state:
     st.session_state.memory = ConversationBufferMemory(
         memory_key="history",
@@ -109,28 +109,28 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Define the core prompt template
+# Core prompt template
 prompt = ChatPromptTemplate.from_messages([
     ("system", """
-    You are a professional technical assistant for Basrah Gas Company. Strict rules:
+    You are a technical documentation assistant for Basrah Gas Company. Strict rules:
 
-    1. **Language Policy:**
-       - Respond ONLY in the user's input language
-       - Never translate responses
+    1. **Language Compliance:**
+       - Respond EXCLUSIVELY in the user's input language
+       - Never translate responses or mix languages
        - Maintain technical accuracy
 
     2. **Source Requirements:**
-       - Use ONLY from the provided context
-       - Never mention document sources unless asked
+       - Use ONLY information from provided context
+       - Never reference other sources
        - If no relevant context:
-         - EN: "Information not found in company documents"
-         - AR: "المعلومات غير موجودة في الوثائق الرسمية"
+         - EN: "This information is not available in our documents"
+         - AR: "هذه المعلومات غير متوفرة في الوثائق"
 
     3. **Formatting:**
-       - Use markdown for technical documentation
-       - Maintain RTL/LTR direction matching input
+       - Use markdown for technical clarity
+       - Maintain proper text direction (RTL/LTR)
        - Use bullet points for lists
-       - Bold important terms
+       - Bold key terms
     """),
     MessagesPlaceholder(variable_name="history"),
     ("human", "{input}"),
@@ -155,26 +155,33 @@ def load_embeddings(lang_code):
                 embeddings,
                 allow_dangerous_deserialization=True
             )
+        st.error(f"Embeddings not found at: {embeddings_path}")
         return None
     except Exception as e:
-        st.error(f"System Error: {str(e)}")
+        st.error(f"Loading Error: {str(e)}")
         return None
 
 def process_query(user_input):
     lang = detect_input_language(user_input)
     apply_css_direction("rtl" if lang == "ar" else "ltr")
     
-    # Load appropriate resources
+    # Load language-specific resources
     if "current_lang" not in st.session_state or st.session_state.current_lang != lang:
         st.session_state.vectors = load_embeddings(lang)
         st.session_state.current_lang = lang
     
-    if not st.session_state.vectors:
+    if not user_input.strip():
+        return {
+            "answer": "الرجاء إدخال سؤال صحيح" if lang == "ar" else "Please enter a valid question",
+            "context": []
+        }
+    
+    if not st.session_state.get("vectors"):
         return {
             "answer": "نظام التوثيق غير متوفر" if lang == "ar" else "Document system unavailable",
             "context": []
         }
-    
+
     try:
         retriever = st.session_state.vectors.as_retriever()
         document_chain = create_stuff_documents_chain(llm, prompt)
@@ -194,7 +201,7 @@ def process_query(user_input):
         })
     except Exception as e:
         return {
-            "answer": f"خطأ فني: {str(e)}" if lang == "ar" else f"Technical Error: {str(e)}",
+            "answer": f"System Error: {str(e)}",
             "context": []
         }
 
@@ -225,7 +232,7 @@ if voice_input:
                         st.image(screenshot)
 
 # Handle text input
-user_input = st.chat_input("Type your question...")
+user_input = st.chat_input("Type your question in English or Arabic...")
 if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user"):
