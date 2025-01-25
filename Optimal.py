@@ -1,4 +1,13 @@
 import streamlit as st
+
+# MUST BE FIRST STREAMLIT COMMAND
+st.set_page_config(
+    page_title="BGC ChatBot",
+    page_icon="BGC Logo Colored.svg",
+    layout="wide"
+)
+
+# Now import other libraries
 import os
 from langchain_groq import ChatGroq
 from langdetect import detect
@@ -12,25 +21,19 @@ from streamlit_mic_recorder import speech_to_text
 import fitz
 import pdfplumber
 
-# Force LTR direction for all elements
+# Force permanent LTR direction
 st.markdown("""
     <style>
-    .stApp, .stChatInput, .stChatMessage {
-        direction: ltr;
-        text-align: left;
+    .stApp, .stChatInput, .stChatMessage, .stMarkdown {
+        direction: ltr !important;
+        text-align: left !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# API Configuration
+# Configuration
 groq_api_key = "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"
 google_api_key = "AIzaSyDdAiOdIa2I28sphYw36Genb4D--2IN1tU"
-
-st.set_page_config(
-    page_title="BGC ChatBot",
-    page_icon="BGC Logo Colored.svg",
-    layout="wide"
-)
 
 class PDFHandler:
     def __init__(self):
@@ -57,21 +60,21 @@ pdf_handler = PDFHandler()
 
 # Sidebar Configuration
 with st.sidebar:
-    st.title("Voice & Response Settings")
+    st.title("Settings")
     
-    # Language selection for voice input and responses
-    response_language = st.selectbox(
-        "Response Language",
+    # Voice input language selection
+    voice_lang = st.selectbox(
+        "Voice Input Language",
         ["English", "Arabic"],
         index=0,
-        key="lang_selector"
+        key="voice_lang"
     )
     
-    # Voice input component with selected language
+    # Voice input component
     voice_input = speech_to_text(
         start_prompt="🎤 Start Recording",
         stop_prompt="⏹️ Stop Recording",
-        language="ar" if response_language == "Arabic" else "en",
+        language="en" if voice_lang == "English" else "ar",
         use_container_width=True,
         just_once=True,
         key="mic_button",
@@ -87,10 +90,7 @@ with col1:
     st.image("BGC Logo Colored.svg", width=100)
 with col2:
     st.title("BGC Multilingual Assistant")
-    st.write("""
-    **Welcome!**  
-    Ask questions using voice or text input
-    """)
+    st.write("**Welcome!** Ask questions using voice or text input")
 
 # Session State Management
 if "memory" not in st.session_state:
@@ -110,12 +110,14 @@ for message in st.session_state.messages:
 # Core Prompt Template
 prompt = ChatPromptTemplate.from_messages([
     ("system", """
-    You are a technical documentation assistant for Basrah Gas Company. Rules:
+    You are a technical assistant for Basrah Gas Company. Strict rules:
     
-    1. Response Language: {response_language}
+    1. Respond in {response_language}
     2. Use ONLY information from provided context
-    3. If no relevant context, say "Information not found in documents"
-    4. Maintain professional technical formatting
+    3. If no relevant context: 
+       - English: "Information not found in documents"
+       - Arabic: "المعلومات غير موجودة في الوثائق"
+    4. Maintain professional technical style
     """),
     MessagesPlaceholder(variable_name="history"),
     ("human", "{input}"),
@@ -140,18 +142,18 @@ def load_embeddings(lang_code):
         return None
 
 def process_query(user_input):
-    lang_code = "ar" if st.session_state.lang_selector == "Arabic" else "en"
+    lang_code = "ar" if st.session_state.voice_lang == "Arabic" else "en"
     
-    # Load embeddings if not loaded or language changed
+    # Load embeddings
     if "vectors" not in st.session_state or st.session_state.current_lang != lang_code:
         st.session_state.vectors = load_embeddings(lang_code)
         st.session_state.current_lang = lang_code
     
+    if not user_input.strip():
+        return {"answer": "Please enter a valid question", "context": []}
+    
     if not st.session_state.get("vectors"):
-        return {
-            "answer": "Document system unavailable",
-            "context": []
-        }
+        return {"answer": "Document system unavailable", "context": []}
 
     try:
         retriever = st.session_state.vectors.as_retriever()
@@ -166,13 +168,10 @@ def process_query(user_input):
             "input": user_input,
             "context": context,
             "history": st.session_state.memory.chat_memory.messages,
-            "response_language": st.session_state.lang_selector
+            "response_language": st.session_state.voice_lang
         })
     except Exception as e:
-        return {
-            "answer": f"System Error: {str(e)}",
-            "context": []
-        }
+        return {"answer": f"System Error: {str(e)}", "context": []}
 
 # Handle Voice Input
 if voice_input:
@@ -191,7 +190,7 @@ if voice_input:
         st.session_state.memory.chat_memory.add_ai_message(assistant_response)
         
         if response.get("context"):
-            pdf_handler.current_pdf = pdf_handler.get_pdf_path("ar" if st.session_state.lang_selector == "Arabic" else "en")
+            pdf_handler.current_pdf = pdf_handler.get_pdf_path("ar" if st.session_state.voice_lang == "Arabic" else "en")
             pages = {doc.metadata.get("page") for doc in response["context"] if doc.metadata.get("page") is not None}
             if pages:
                 with st.expander("Document References"):
@@ -217,7 +216,7 @@ if user_input:
         st.session_state.memory.chat_memory.add_ai_message(assistant_response)
         
         if response.get("context"):
-            pdf_handler.current_pdf = pdf_handler.get_pdf_path("ar" if st.session_state.lang_selector == "Arabic" else "en")
+            pdf_handler.current_pdf = pdf_handler.get_pdf_path("ar" if st.session_state.voice_lang == "Arabic" else "en")
             pages = {doc.metadata.get("page") for doc in response["context"] if doc.metadata.get("page") is not None}
             if pages:
                 with st.expander("Document References"):
