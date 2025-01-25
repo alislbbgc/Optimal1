@@ -1,7 +1,7 @@
 import streamlit as st
 import os
 from langchain_groq import ChatGroq
-from langdetect import detect, DetectorFactory
+from langdetect import detect, DetectorFactory  # Correct import
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains import create_retrieval_chain
@@ -12,14 +12,14 @@ from streamlit_mic_recorder import speech_to_text
 import fitz
 import pdfplumber
 
-# Initialize language detector first
+# Initialize detector first for consistent results
 DetectorFactory.seed = 0
 
-# API Keys (replace with your actual keys)
+# API Configuration
 groq_api_key = "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"
 google_api_key = "AIzaSyDdAiOdIa2I28sphYw36Genb4D--2IN1tU"
 
-# Configure page settings
+# Streamlit Configuration
 st.set_page_config(
     page_title="BGC ChatBot",
     page_icon="BGC Logo Colored.svg",
@@ -62,7 +62,7 @@ class PDFHandler:
 # Initialize components
 pdf_handler = PDFHandler()
 
-# Sidebar configuration
+# Sidebar Configuration
 with st.sidebar:
     st.title("Chat Controls")
     
@@ -83,7 +83,7 @@ with st.sidebar:
             st.session_state.clear()
             st.rerun()
 
-# Main interface
+# Main Interface
 col1, col2 = st.columns([1, 4])
 with col1:
     st.image("BGC Logo Colored.svg", width=100)
@@ -94,7 +94,7 @@ with col2:
     Ask questions in English or Arabic about company documents
     """)
 
-# Initialize session state
+# Session State Management
 if "memory" not in st.session_state:
     st.session_state.memory = ConversationBufferMemory(
         memory_key="history",
@@ -104,12 +104,12 @@ if "memory" not in st.session_state:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Display chat history
+# Chat History Display
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Core prompt template
+# Core Prompt Template
 prompt = ChatPromptTemplate.from_messages([
     ("system", """
     You are a technical documentation assistant for Basrah Gas Company. Strict rules:
@@ -205,7 +205,7 @@ def process_query(user_input):
             "context": []
         }
 
-# Handle voice input
+# Handle Voice Input
 if voice_input:
     st.session_state.messages.append({"role": "user", "content": voice_input})
     with st.chat_message("user"):
@@ -231,7 +231,7 @@ if voice_input:
                     for screenshot in pdf_handler.capture_screenshots(pages):
                         st.image(screenshot)
 
-# Handle text input
+# Handle Text Input
 user_input = st.chat_input("Type your question in English or Arabic...")
 if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
