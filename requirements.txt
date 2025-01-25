@@ -19,4 +19,3 @@ langchain
 langchain-core
 langchain-community
 langdetect==1.0.9
-google-generativeai>=0.3.2
