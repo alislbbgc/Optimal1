@@ -65,6 +65,7 @@ pdf_handler = PDFHandler()
 # Sidebar Configuration
 with st.sidebar:
     st.title("Chat Controls")
+    st.radio("Voice Input Language", ["English", "Arabic"], key="voice_lang")
     
     if groq_api_key and google_api_key:
         os.environ["GOOGLE_API_KEY"] = google_api_key
@@ -72,6 +73,7 @@ with st.sidebar:
 
         # Voice input component
         voice_input = speech_to_text(
+            language='en' if st.session_state.voice_lang == "English" else 'ar',
             start_prompt="🎤",
             stop_prompt="⏹️ Stop",
             use_container_width=True,
@@ -163,7 +165,7 @@ def load_embeddings(lang_code):
 
 def process_query(user_input):
     lang = detect_input_language(user_input)
-    apply_css_direction("rtl" if lang == "ar" else "ltr")
+    apply_css_direction("ltr")  # Force LTR direction
     
     # Load language-specific resources
     if "current_lang" not in st.session_state or st.session_state.current_lang != lang:
