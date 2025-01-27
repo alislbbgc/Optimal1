@@ -163,7 +163,7 @@ def load_embeddings(lang_code):
 
 def process_query(user_input):
     lang = detect_input_language(user_input)
-    apply_css_direction("rtl" if lang == "ar" else "ltr")
+    apply_css_direction("ltr")
     
     # Load language-specific resources
     if "current_lang" not in st.session_state or st.session_state.current_lang != lang:
