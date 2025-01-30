@@ -148,16 +148,50 @@ def detect_input_language(text):
 def load_embeddings(lang_code):
     try:
         embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-        lang_folder = "Arabic" if lang_code == "ar" else "English"
-        embeddings_path = f"embeddings/{lang_folder}/embeddings"
-        
-        if os.path.exists(embeddings_path):
-            return FAISS.load_local(
-                embeddings_path,
-                embeddings,
-                allow_dangerous_deserialization=True
-            )
-        st.error(f"Embeddings not found at: {embeddings_path}")
+        if lang_code == "ar":
+            embeddings_path = "embeddings/Arabic/embeddings"
+            if os.path.exists(os.path.join(embeddings_path, "index.faiss")) and os.path.exists(os.path.join(embeddings_path, "index.pkl")):
+                return FAISS.load_local(
+                    os.path.join(embeddings_path, "index.faiss"),
+                    embeddings,
+                    allow_dangerous_deserialization=True
+                )
+            else:
+                st.error(f"Embeddings files (index.faiss or index.pkl) not found in {embeddings_path} for language: {lang_code}")
+                return None
+        elif lang_code == "en":
+            embeddings_main_path = "embeddings/English/embeddings"
+            embeddings_ocr_path = "embeddings/English/embeddings_ocr"
+            if os.path.exists(os.path.join(embeddings_main_path, "index.faiss")) and os.path.exists(os.path.join(embeddings_main_path, "index.pkl")) and os.path.exists(os.path.join(embeddings_ocr_path, "index.faiss")) and os.path.exists(os.path.join(embeddings_ocr_path, "index.pkl")):
+                vectors_main = FAISS.load_local(
+                    os.path.join(embeddings_main_path, "index.faiss"),
+                    embeddings,
+                    allow_dangerous_deserialization=True
+                )
+                vectors_ocr = FAISS.load_local(
+                    os.path.join(embeddings_ocr_path, "index.faiss"),
+                    embeddings,
+                    allow_dangerous_deserialization=True
+                )
+                # Merge both FAISS indexes
+                vectors_main.merge_from(vectors_ocr)
+                return vectors_main
+            elif os.path.exists(os.path.join(embeddings_main_path, "index.faiss")) and os.path.exists(os.path.join(embeddings_main_path, "index.pkl")):
+                return FAISS.load_local(
+                    os.path.join(embeddings_main_path, "index.faiss"),
+                    embeddings,
+                    allow_dangerous_deserialization=True
+                )
+            elif os.path.exists(os.path.join(embeddings_ocr_path, "index.faiss")) and os.path.exists(os.path.join(embeddings_ocr_path, "index.pkl")):
+                return FAISS.load_local(
+                    os.path.join(embeddings_ocr_path, "index.faiss"),
+                    embeddings,
+                    allow_dangerous_deserialization=True
+                )
+            else:
+                st.error(f"Embeddings files (index.faiss or index.pkl) not found in either {embeddings_main_path} or {embeddings_ocr_path} for language: {lang_code}")
+                return None
+        st.error(f"Embeddings not found for language: {lang_code}")
         return None
     except Exception as e:
         st.error(f"Loading Error: {str(e)}")
