@@ -1,7 +1,7 @@
 import streamlit as st
 import os
 from langchain_groq import ChatGroq
-from langdetect import detect, DetectorFactory  # Correct import
+from langdetect import detect, DetectorFactory
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains import create_retrieval_chain
@@ -152,46 +152,33 @@ def load_embeddings(lang_code):
             embeddings_path = "embeddings/Arabic/embeddings"
             if os.path.exists(os.path.join(embeddings_path, "index.faiss")) and os.path.exists(os.path.join(embeddings_path, "index.pkl")):
                 return FAISS.load_local(
-                    os.path.join(embeddings_path, "index.faiss"),
+                    embeddings_path,
                     embeddings,
                     allow_dangerous_deserialization=True
                 )
             else:
-                st.error(f"Embeddings files (index.faiss or index.pkl) not found in {embeddings_path} for language: {lang_code}")
+                st.error(f"Embeddings files not found in {embeddings_path} for Arabic")
                 return None
         elif lang_code == "en":
             embeddings_main_path = "embeddings/English/embeddings"
-            embeddings_ocr_path = "embeddings/English/embeddings_ocr"
-            if os.path.exists(os.path.join(embeddings_main_path, "index.faiss")) and os.path.exists(os.path.join(embeddings_main_path, "index.pkl")) and os.path.exists(os.path.join(embeddings_ocr_path, "index.faiss")) and os.path.exists(os.path.join(embeddings_ocr_path, "index.pkl")):
-                vectors_main = FAISS.load_local(
-                    os.path.join(embeddings_main_path, "index.faiss"),
-                    embeddings,
-                    allow_dangerous_deserialization=True
-                )
-                vectors_ocr = FAISS.load_local(
-                    os.path.join(embeddings_ocr_path, "index.faiss"),
-                    embeddings,
-                    allow_dangerous_deserialization=True
-                )
-                # Merge both FAISS indexes
+            embeddings_ocr_path = "embeddings/English/embeddingsOCR"
+            
+            main_exists = os.path.exists(os.path.join(embeddings_main_path, "index.faiss")) and os.path.exists(os.path.join(embeddings_main_path, "index.pkl"))
+            ocr_exists = os.path.exists(os.path.join(embeddings_ocr_path, "index.faiss")) and os.path.exists(os.path.join(embeddings_ocr_path, "index.pkl"))
+            
+            if main_exists and ocr_exists:
+                vectors_main = FAISS.load_local(embeddings_main_path, embeddings, allow_dangerous_deserialization=True)
+                vectors_ocr = FAISS.load_local(embeddings_ocr_path, embeddings, allow_dangerous_deserialization=True)
                 vectors_main.merge_from(vectors_ocr)
                 return vectors_main
-            elif os.path.exists(os.path.join(embeddings_main_path, "index.faiss")) and os.path.exists(os.path.join(embeddings_main_path, "index.pkl")):
-                return FAISS.load_local(
-                    os.path.join(embeddings_main_path, "index.faiss"),
-                    embeddings,
-                    allow_dangerous_deserialization=True
-                )
-            elif os.path.exists(os.path.join(embeddings_ocr_path, "index.faiss")) and os.path.exists(os.path.join(embeddings_ocr_path, "index.pkl")):
-                return FAISS.load_local(
-                    os.path.join(embeddings_ocr_path, "index.faiss"),
-                    embeddings,
-                    allow_dangerous_deserialization=True
-                )
+            elif main_exists:
+                return FAISS.load_local(embeddings_main_path, embeddings, allow_dangerous_deserialization=True)
+            elif ocr_exists:
+                return FAISS.load_local(embeddings_ocr_path, embeddings, allow_dangerous_deserialization=True)
             else:
-                st.error(f"Embeddings files (index.faiss or index.pkl) not found in either {embeddings_main_path} or {embeddings_ocr_path} for language: {lang_code}")
+                st.error(f"Embeddings not found in either {embeddings_main_path} or {embeddings_ocr_path}")
                 return None
-        st.error(f"Embeddings not found for language: {lang_code}")
+        st.error(f"Unsupported language code: {lang_code}")
         return None
     except Exception as e:
         st.error(f"Loading Error: {str(e)}")
@@ -199,9 +186,8 @@ def load_embeddings(lang_code):
 
 def process_query(user_input):
     lang = detect_input_language(user_input)
-    apply_css_direction("ltr")  # Force LTR direction
+    apply_css_direction("ltr")
     
-    # Load language-specific resources
     if "current_lang" not in st.session_state or st.session_state.current_lang != lang:
         st.session_state.vectors = load_embeddings(lang)
         st.session_state.current_lang = lang
