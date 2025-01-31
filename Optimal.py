@@ -1,5 +1,6 @@
 import streamlit as st
 import os
+from typing import Dict, List, Optional, Union, Callable
 from langchain_groq import ChatGroq
 from langdetect import detect, DetectorFactory
 from langchain.chains.combine_documents import create_stuff_documents_chain
@@ -12,13 +13,19 @@ from streamlit_mic_recorder import speech_to_text
 import fitz
 import pdfplumber
 
-# Initialize detector first for consistent results
+# Initialize detector for consistent results
 DetectorFactory.seed = 0
 
-# VERY STRONGLY DISCOURAGED - ONLY FOR SHORT-LIVED, ISOLATED TESTS
-groq_api_key = "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"  
-google_api_key = "AIzaSyDdAiOdIa2I28sphYw36Genb4D--2IN1tU"
+# Configuration
+MAX_MESSAGES = 50
+PDF_PATHS = {
+    "ar": "BGC-Ar.pdf",
+    "en": "BGC-En.pdf"
+}
 
+# Load API keys from environment variables
+groq_api_key = os.getenv("GROQ_API_KEY", "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")
+google_api_key = os.getenv("GOOGLE_API_KEY", "AIzaSyDdAiOdIa2I28sphYw36Genb4D--2IN1tU")
 
 # Streamlit Configuration
 st.set_page_config(
@@ -27,7 +34,7 @@ st.set_page_config(
     layout="wide"
 )
 
-def apply_css_direction(direction):
+def apply_css_direction(direction: str) -> None:
     st.markdown(
         f"""
         <style>
@@ -41,24 +48,30 @@ def apply_css_direction(direction):
 
 class PDFHandler:
     def __init__(self):
-        self.current_pdf = None
+        self.current_pdf: Optional[str] = None
 
-    def get_pdf_path(self, language):
-        return "BGC-Ar.pdf" if language == "ar" else "BGC-En.pdf"
+    def get_pdf_path(self, language: str) -> str:
+        return PDF_PATHS.get(language, PDF_PATHS["en"])
 
-    def capture_screenshots(self, pages):
-        if not self.current_pdf:
-            return []
-
-        doc = fitz.open(self.current_pdf)
+    def capture_screenshots(self, pages: List[int]) -> List[str]:
         screenshots = []
-        for page_number in pages:
-            page = doc.load_page(page_number)
-            pix = page.get_pixmap()
-            screenshot_path = f"screenshot_page_{page_number}.png"
-            pix.save(screenshot_path)
-            screenshots.append(screenshot_path)
-        return screenshots
+        if not self.current_pdf:
+            return screenshots
+
+        try:
+            doc = fitz.open(self.current_pdf)
+            for page_number in pages:
+                screenshot_path = f"screenshot_page_{page_number}.png"
+                screenshots.append(screenshot_path)
+                page = doc.load_page(page_number)
+                pix = page.get_pixmap()
+                pix.save(screenshot_path)
+            return screenshots
+        finally:
+            # Clean up temporary files in finally block
+            for screenshot in screenshots:
+                if os.path.exists(screenshot):
+                    os.remove(screenshot)
 
 # Initialize components
 pdf_handler = PDFHandler()
@@ -107,6 +120,10 @@ if "memory" not in st.session_state:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+# Manage message history size
+if len(st.session_state.messages) > MAX_MESSAGES:
+    st.session_state.messages = st.session_state.messages[-MAX_MESSAGES:]
+
 # Chat History Display
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
@@ -140,13 +157,14 @@ prompt = ChatPromptTemplate.from_messages([
     ("system", "Document Context: {context}"),
 ])
 
-def detect_input_language(text):
+def detect_input_language(text: str) -> str:
     try:
         return detect(text)
     except:
         return "en"
 
-def load_embeddings(lang_code):
+@st.cache_resource
+def load_embeddings(lang_code: str) -> Optional[Union[FAISS, List[FAISS]]]:
     try:
         embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
         lang_folder = "Arabic" if lang_code == "ar" else "English"
@@ -168,8 +186,7 @@ def load_embeddings(lang_code):
                 else:
                     st.error(f"Embeddings not found at: {embeddings_path}")
                     return None
-            combined_vectors = all_vectors 
-            return combined_vectors
+            return all_vectors
         else:
             embeddings_path = f"embeddings/{lang_folder}/embeddings"
             if os.path.exists(f"{embeddings_path}/index.pkl") and os.path.exists(f"{embeddings_path}/index.faiss"):
@@ -185,10 +202,9 @@ def load_embeddings(lang_code):
         st.error(f"Loading Error: {str(e)}")
         return None
 
-
-def process_query(user_input):
+def process_query(user_input: str) -> Dict[str, Union[str, List]]:
     lang = detect_input_language(user_input)
-    apply_css_direction("ltr")
+    apply_css_direction("rtl" if lang == "ar" else "ltr")
 
     if "current_lang" not in st.session_state or st.session_state.current_lang != lang:
         st.session_state.vectors = load_embeddings(lang)
@@ -209,27 +225,31 @@ def process_query(user_input):
     try:
         if lang == "en":
             retrievers = [v.as_retriever() for v in st.session_state.vectors]
-            def combined_retrieval(query):
+            
+            def combined_retrieval(query: str) -> List:
                 all_docs = []
                 for retriever in retrievers:
                     docs = retriever.get_relevant_documents(query)
                     all_docs.extend(docs)
-                # IMPROVE THIS: Add deduplication and ranking. Example below
+                
+                # Deduplication of documents
                 unique_docs = []
                 seen_docs = set()
                 for doc in all_docs:
-                    if doc.page_content not in seen_docs: # Deduplication based on page content
+                    if doc.page_content not in seen_docs:
                         unique_docs.append(doc)
                         seen_docs.add(doc.page_content)
-                return unique_docs # Basic deduplication
+                return unique_docs
 
             retriever = combined_retrieval
         else:
-            retriever = st.session_state.vectors.as_retriever() 
-document_chain = create_stuff_documents_chain(llm, prompt)
+            retriever = st.session_state.vectors.as_retriever()
+
+        document_chain = create_stuff_documents_chain(llm, prompt)
         retrieval_chain = create_retrieval_chain(retriever, document_chain)
 
         context = retriever(user_input) if callable(retriever) else retriever.get_relevant_documents(user_input)
+        
         if not context:
             return {
                 "answer": "لا توجد معلومات ذات صلة" if lang == "ar" else "No relevant information found",
@@ -241,9 +261,14 @@ document_chain = create_stuff_documents_chain(llm, prompt)
             "context": context,
             "history": st.session_state.memory.chat_memory.messages
         })
+    except FileNotFoundError as e:
+        return {
+            "answer": "Document access error: " + str(e),
+            "context": []
+        }
     except Exception as e:
         return {
-            "answer": f"System Error: {str(e)}",
+            "answer": "Unexpected error: " + str(e),
             "context": []
         }
 
