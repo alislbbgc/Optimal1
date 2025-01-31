@@ -49,29 +49,54 @@ def apply_css_direction(direction: str) -> None:
 class PDFHandler:
     def __init__(self):
         self.current_pdf: Optional[str] = None
+        self.temp_dir = "temp_screenshots"
+        
+        # Create temp directory if it doesn't exist
+        if not os.path.exists(self.temp_dir):
+            os.makedirs(self.temp_dir)
 
     def get_pdf_path(self, language: str) -> str:
         return PDF_PATHS.get(language, PDF_PATHS["en"])
 
+    def cleanup_old_screenshots(self):
+        """Clean up old screenshot files"""
+        if os.path.exists(self.temp_dir):
+            for file in os.listdir(self.temp_dir):
+                file_path = os.path.join(self.temp_dir, file)
+                try:
+                    if os.path.isfile(file_path):
+                        os.unlink(file_path)
+                except Exception as e:
+                    st.error(f"Error cleaning up file {file_path}: {e}")
+
     def capture_screenshots(self, pages: List[int]) -> List[str]:
+        """Capture screenshots of PDF pages and return their paths"""
         screenshots = []
-        if not self.current_pdf:
+        if not self.current_pdf or not os.path.exists(self.current_pdf):
+            st.error("PDF file not found")
             return screenshots
+
+        # Clean up old screenshots
+        self.cleanup_old_screenshots()
 
         try:
             doc = fitz.open(self.current_pdf)
             for page_number in pages:
-                screenshot_path = f"screenshot_page_{page_number}.png"
-                screenshots.append(screenshot_path)
-                page = doc.load_page(page_number)
-                pix = page.get_pixmap()
-                pix.save(screenshot_path)
+                try:
+                    screenshot_path = os.path.join(self.temp_dir, f"screenshot_page_{page_number}.png")
+                    page = doc.load_page(page_number)
+                    pix = page.get_pixmap()
+                    pix.save(screenshot_path)
+                    screenshots.append(screenshot_path)
+                except Exception as e:
+                    st.error(f"Error capturing screenshot for page {page_number}: {e}")
             return screenshots
+        except Exception as e:
+            st.error(f"Error opening PDF: {e}")
+            return []
         finally:
-            # Clean up temporary files in finally block
-            for screenshot in screenshots:
-                if os.path.exists(screenshot):
-                    os.remove(screenshot)
+            if 'doc' in locals():
+                doc.close()
 
 # Initialize components
 pdf_handler = PDFHandler()
@@ -296,14 +321,22 @@ if voice_input:
         st.session_state.memory.chat_memory.add_ai_message(assistant_response)
 
         if response.get("context"):
-            pdf_handler.current_pdf = pdf_handler.get_pdf_path(detect_input_language(voice_input))
+            lang = detect_input_language(voice_input)
+            pdf_handler.current_pdf = pdf_handler.get_pdf_path(lang)
             pages = {doc.metadata.get("page") for doc in response["context"] if doc.metadata.get("page") is not None}
             if pages:
-                with st.expander("المراجع" if detect_input_language(voice_input) == "ar" else "References"):
-                    st.write(f"الصفحات: {', '.join(map(str, sorted(pages)))}" if detect_input_language(voice_input) == "ar"
+                with st.expander("المراجع" if lang == "ar" else "References"):
+                    st.write(f"الصفحات: {', '.join(map(str, sorted(pages)))}" if lang == "ar"
                              else f"Pages: {', '.join(map(str, sorted(pages)))}")
-                    for screenshot in pdf_handler.capture_screenshots(pages):
-                        st.image(screenshot)
+                    screenshots = pdf_handler.capture_screenshots(pages)
+                    for screenshot_path in screenshots:
+                        try:
+                            if os.path.exists(screenshot_path):
+                                st.image(screenshot_path)
+                            else:
+                                st.error(f"Screenshot not found: {screenshot_path}")
+                        except Exception as e:
+                            st.error(f"Error displaying screenshot: {e}")
 
 # Handle Text Input
 user_input = st.chat_input("Type your question in English or Arabic...")
@@ -330,5 +363,12 @@ if user_input:
                 with st.expander("المراجع" if lang == "ar" else "References"):
                     st.write(f"الصفحات: {', '.join(map(str, sorted(pages)))}" if lang == "ar"
                              else f"Pages: {', '.join(map(str, sorted(pages)))}")
-                    for screenshot in pdf_handler.capture_screenshots(pages):
-                        st.image(screenshot)
+                    screenshots = pdf_handler.capture_screenshots(pages)
+                    for screenshot_path in screenshots:
+                        try:
+                            if os.path.exists(screenshot_path):
+                                st.image(screenshot_path)
+                            else:
+                                st.error(f"Screenshot not found: {screenshot_path}")
+                        except Exception as e:
+                            st.error(f"Error displaying screenshot: {e}")
