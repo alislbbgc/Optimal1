@@ -245,9 +245,10 @@ def process_query(user_input: str) -> Dict[str, Union[str, List]]:
         else:
             retriever = st.session_state.vectors.as_retriever()
 
+        # Updated chain creation
         document_chain = create_stuff_documents_chain(llm, prompt)
-        retrieval_chain = create_retrieval_chain(retriever, document_chain)
-
+        
+        # Get context directly instead of using retrieval chain
         context = retriever(user_input) if callable(retriever) else retriever.get_relevant_documents(user_input)
         
         if not context:
@@ -256,11 +257,17 @@ def process_query(user_input: str) -> Dict[str, Union[str, List]]:
                 "context": []
             }
 
-        return retrieval_chain.invoke({
+        # Use document chain directly
+        response = document_chain.invoke({
             "input": user_input,
             "context": context,
             "history": st.session_state.memory.chat_memory.messages
         })
+
+        return {
+            "answer": response,
+            "context": context
+        }
     except FileNotFoundError as e:
         return {
             "answer": "Document access error: " + str(e),
